@@ -5,7 +5,7 @@ use rocket::{Build, Rocket};
 
 #[get("/hello")]
 fn hello() -> &'static str {
-    "Hello, world!"
+    "Hello, world! I'm a potato!"
 }
 
 #[shuttle_service::main]
