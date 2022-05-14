@@ -11,7 +11,7 @@ use sqlx::{Executor, FromRow, PgPool};
 
 #[derive(Serialize, FromRow)]
 struct Plant {
-    pub id: i32,
+    pub plant_id: i32,
     pub name: String,
     pub outside: bool,
 }
@@ -24,7 +24,7 @@ struct PlantNew {
 
 #[get("/<id>")]
 async fn get_plant(id: i32, state: &State<BirdieState>) -> Result<Json<Plant>, BadRequest<String>> {
-    let plant = sqlx::query_as("SELECT * FROM plants WHERE id = $1")
+    let plant = sqlx::query_as("SELECT * FROM plants WHERE plant_id = $1")
         .bind(id)
         .fetch_one(&state.pool)
         .await
