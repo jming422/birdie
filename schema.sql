@@ -14,6 +14,14 @@ CREATE TABLE IF NOT EXISTS people (
 CREATE TABLE IF NOT EXISTS expenses (
   expense_id SERIAL PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  outing_id INTEGER NOT NULL REFERENCES people(outing_id),
+  person_id INTEGER NOT NULL REFERENCES people(person_id),
   amount NUMERIC(9,2) NOT NULL, -- 9 precision, 2 scale means we can store dollars between +/- 9,999,999.99
   description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS outing_people (
+  outing_id INTEGER REFERENCES people(outing_id),
+  person_id INTEGER REFERENCES people(person_id),
+  PRIMARY KEY (outing_id, person_id)
 );
