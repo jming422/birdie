@@ -2,14 +2,17 @@
 name = "birdie"
 version = "0.1.0"
 edition = "2021"
-description = "Experimenting with Shuttle"
+description = "Split group expenses using the minimal number of transactions"
 license = "MIT"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-rocket = { version = "0.5.0-rc.2", features = ["json"] }
+axum = "0.5"
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
 serde = "1.0"
-sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres"] }
-shuttle-service = { version = "0.2", features = ["sqlx-postgres", "web-rocket"] }
+shuttle-service = { version = "0.2", features = ["sqlx-postgres", "web-axum"] }
+sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "decimal", "chrono"] }
+sync_wrapper = "0.1"

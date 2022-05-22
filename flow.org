@@ -1,0 +1,27 @@
+#+title: Flow
+
+* Entities
+** Outing
+Name
+Created date
+** Person
+Name
+** Expense
+Amount
+Date
+Description (optional)
+* Relationships
+** Outing -> People M:N
+Each outing has 1 or more people, and each person can be on 0 or more outings
+** Outing + Person -> Expense 1:M
+Each expense has exactly one outing & exactly one person
+* Actions
+** Start outing
+Involves selecting a group of people and a name
+** IDEA Add person to outing in progress
+With option to not charge person for expenses before they were added
+** Add expense
+Involves selecting outing & amount. Optionally provide date (else default to now), optionally provide description
+** End outing
+Splits the expenses evenly & tells every person on the outing how much they owe one another
+Maybe fun to show the total $ spent on the outing as a group
