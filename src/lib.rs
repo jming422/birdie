@@ -1,11 +1,14 @@
+use std::collections::VecDeque;
+
 use axum::{
     extract::Path,
     http::StatusCode,
-    routing::{get, post},
+    response::{Html, IntoResponse},
+    routing::{get, post, put},
     Extension, Json, Router,
 };
 use shuttle_service::error::CustomError;
-use sqlx::{Executor, PgPool};
+use sqlx::{types::Decimal, Executor, PgPool};
 use sync_wrapper::SyncWrapper;
 
 mod models;
@@ -44,7 +47,7 @@ async fn create_outing(
          SELECT * FROM new_outing",
     )
     .bind(&payload.name)
-    .bind(&payload.initiator)
+    .bind(&payload.person_id)
     .fetch_one(&pool)
     .await
     .map_err(bad_request)?;
@@ -84,7 +87,7 @@ async fn retrieve_outing_balance(
     Extension(pool): Extension<PgPool>,
     Path(outing_id): Path<i32>,
 ) -> Result<Json<Balance>, (StatusCode, String)> {
-    let result = sqlx::query_as("SELECT SUM(amount) FROM expenses WHERE outing_id = $1")
+    let result = sqlx::query_as("SELECT SUM(amount) AS total FROM expenses WHERE outing_id = $1")
         .bind(outing_id)
         .fetch_one(&pool)
         .await
@@ -93,13 +96,18 @@ async fn retrieve_outing_balance(
     Ok(Json(result))
 }
 
+async fn query_outing_expenses(pool: &PgPool, outing_id: i32) -> Result<Vec<Expense>, sqlx::Error> {
+    sqlx::query_as("SELECT * FROM expenses WHERE outing_id = $1")
+        .bind(outing_id)
+        .fetch_all(pool)
+        .await
+}
+
 async fn retrieve_outing_expenses(
     Extension(pool): Extension<PgPool>,
     Path(outing_id): Path<i32>,
 ) -> Result<Json<Vec<Expense>>, (StatusCode, String)> {
-    let result = sqlx::query_as("SELECT * FROM expenses WHERE outing_id = $1")
-        .bind(outing_id)
-        .fetch_all(&pool)
+    let result = query_outing_expenses(&pool, outing_id)
         .await
         .map_err(internal_error)?;
 
@@ -155,7 +163,12 @@ async fn create_expense(
     Json(payload): Json<ExpenseNew>,
 ) -> Result<Json<Expense>, (StatusCode, String)> {
     let result = sqlx::query_as(
-        "INSERT INTO expenses(outing_id, person_id, amount, description) \
+        "WITH op AS ( \
+           INSERT INTO outing_people(outing_id, person_id) \
+           VALUES ($1, $2) \
+           ON CONFLICT DO NOTHING
+         ) \
+         INSERT INTO expenses(outing_id, person_id, amount, description) \
          VALUES ($1, $2, $3, $4) RETURNING *",
     )
     .bind(&payload.outing_id)
@@ -169,6 +182,99 @@ async fn create_expense(
     Ok(Json(result))
 }
 
+async fn join_outing(
+    Extension(pool): Extension<PgPool>,
+    Json(payload): Json<OutingPerson>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    sqlx::query(
+        "INSERT INTO outing_people(outing_id, person_id) \
+         VALUES ($1, $2) \
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(&payload.outing_id)
+    .bind(&payload.person_id)
+    .execute(&pool)
+    .await
+    .map_err(bad_request)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn finish_outing(
+    Extension(pool): Extension<PgPool>,
+    Path(outing_id): Path<i32>,
+) -> Result<Json<Vec<OutingResult>>, (StatusCode, String)> {
+    // Here, a positive diff from avg indicates debt to the group, and negative
+    // means the person is owed by the group
+    let mut people_debts: VecDeque<PersonDiff> = VecDeque::from(
+        sqlx::query_as(
+            "WITH expenses_per_person AS ( \
+               SELECT person_id, SUM(amount) AS amount_paid \
+               FROM outing_people \
+               NATURAL LEFT JOIN expenses \
+               WHERE outing_id = $1 \
+               GROUP BY person_id \
+             ), group_avg AS ( \
+               SELECT AVG(amount_paid) FROM expenses_per_person
+             ) \
+             SELECT \
+               person_id, \
+               (SELECT avg FROM group_avg) - amount_paid AS diff_from_avg \
+             FROM expenses_per_person",
+        )
+        .bind(outing_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(internal_error)?,
+    );
+
+    let mut results = Vec::with_capacity(people_debts.len());
+
+    while people_debts.len() > 0 {
+        // Sorts in ascending order, so the person with highest debt to the
+        // group comes at the back
+        people_debts
+            .make_contiguous()
+            .sort_unstable_by_key(|pd| pd.diff_from_avg);
+
+        let most_indebted = people_debts.pop_back().unwrap();
+
+        if people_debts.len() == 0 {
+            if most_indebted.diff_from_avg > Decimal::new(1, 2) {
+                eprintln!(
+                    "Somebody was left over with an oustanding balance greater than 1 cent: {:?}",
+                    most_indebted
+                );
+            }
+
+            results.push(OutingResult {
+                from: most_indebted.person_id,
+                to: most_indebted.person_id,
+                amount: most_indebted.diff_from_avg,
+            });
+        } else {
+            let most_owed = people_debts.front_mut().unwrap();
+            results.push(OutingResult {
+                from: most_indebted.person_id,
+                to: most_owed.person_id,
+                amount: most_indebted.diff_from_avg,
+            });
+            // This works because most_owed's diff should be negative, while
+            // most_indebted's diff should be positive.
+            most_owed.diff_from_avg += most_indebted.diff_from_avg;
+            if most_owed.diff_from_avg == Decimal::ZERO {
+                people_debts.pop_front();
+            }
+        }
+    }
+
+    Ok(Json(results))
+}
+
+async fn serve_index() -> impl IntoResponse {
+    Html(include_str!("index.html"))
+}
+
 #[shuttle_service::main]
 async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Error> {
     pool.execute(include_str!("../schema.sql"))
@@ -178,9 +284,11 @@ async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Erro
     let outing_routes = Router::new()
         .route("/", get(list_outings))
         .route("/", post(create_outing))
+        .route("/join", put(join_outing))
         .route("/:id", get(retrieve_outing))
         .route("/:id/balance", get(retrieve_outing_balance))
-        .route("/:id/expenses", get(retrieve_outing_expenses));
+        .route("/:id/expenses", get(retrieve_outing_expenses))
+        .route("/:outing_id/finish", get(finish_outing));
 
     let person_routes = Router::new()
         .route("/", post(create_person))
@@ -197,6 +305,7 @@ async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Erro
                 .nest("/people", person_routes)
                 .nest("/expenses", expense_routes),
         )
+        .fallback(get(serve_index))
         .layer(Extension(pool));
 
     let sync_wrapper = SyncWrapper::new(router);

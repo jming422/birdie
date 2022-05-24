@@ -32,7 +32,7 @@ impl OutingDetails {
 #[derive(Deserialize)]
 pub struct OutingNew {
     pub name: String,
-    pub initiator: i32, // Maps to an OutingPerson's person_id column
+    pub person_id: i32, // Maps to an OutingPerson
 }
 
 #[derive(Serialize, FromRow)]
@@ -66,11 +66,24 @@ pub struct ExpenseNew {
 
 #[derive(Serialize, FromRow)]
 pub struct Balance {
-    pub amount: Decimal,
+    pub total: Decimal,
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct OutingPerson {
     pub outing_id: i32,
     pub person_id: i32,
+}
+
+#[derive(FromRow, Debug)]
+pub struct PersonDiff {
+    pub person_id: i32,
+    pub diff_from_avg: Decimal,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct OutingResult {
+    pub from: i32,
+    pub to: i32,
+    pub amount: Decimal,
 }
