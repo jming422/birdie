@@ -3,7 +3,7 @@ name = "birdie"
 version = "0.1.0"
 edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [lib]
 crate-type = ["cdylib"]

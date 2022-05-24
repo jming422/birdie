@@ -1,3 +1,22 @@
+/*
+ * Birdie - Split group expenses using the minimal number of transactions
+ *
+ * Copyright © 2022 Jonathan Ming
+ *
+ * This file is part of Birdie.
+ *
+ * Birdie is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * Birdie is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * Birdie. If not, see <https://www.gnu.org/licenses/>.
+ */
 use std::collections::VecDeque;
 
 use axum::{
