@@ -25,13 +25,13 @@ use std::collections::VecDeque;
 use axum::{
     extract::Path,
     http::StatusCode,
-    response::{Html, IntoResponse},
-    routing::{get, post, put},
+    routing::{get, get_service, post, put},
     Extension, Json, Router,
 };
 use shuttle_service::error::CustomError;
 use sqlx::{types::Decimal, Executor, PgPool};
 use sync_wrapper::SyncWrapper;
+use tower_http::services::ServeDir;
 
 mod models;
 use models::*;
@@ -293,10 +293,6 @@ async fn finish_outing(
     Ok(Json(results))
 }
 
-async fn serve_index() -> impl IntoResponse {
-    Html(include_str!("index.html"))
-}
-
 #[shuttle_service::main]
 async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Error> {
     pool.execute(include_str!("../schema.sql"))
@@ -327,7 +323,11 @@ async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Erro
                 .nest("/people", person_routes)
                 .nest("/expenses", expense_routes),
         )
-        .fallback(get(serve_index))
+        .fallback(
+            get_service(ServeDir::new("./js/build")).handle_error(|_e| async {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
+            }),
+        )
         .layer(Extension(pool));
 
     let sync_wrapper = SyncWrapper::new(router);
