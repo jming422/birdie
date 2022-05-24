@@ -17,6 +17,9 @@
  * You should have received a copy of the GNU General Public License along with
  * Birdie. If not, see <https://www.gnu.org/licenses/>.
  */
+
+#![warn(clippy::all)]
+
 use std::collections::VecDeque;
 
 use axum::{
@@ -249,7 +252,7 @@ async fn finish_outing(
 
     let mut results = Vec::with_capacity(people_debts.len());
 
-    while people_debts.len() > 0 {
+    while !people_debts.is_empty() {
         // Sorts in ascending order, so the person with highest debt to the
         // group comes at the back
         people_debts
@@ -258,7 +261,7 @@ async fn finish_outing(
 
         let most_indebted = people_debts.pop_back().unwrap();
 
-        if people_debts.len() == 0 {
+        if people_debts.is_empty() {
             if most_indebted.diff_from_avg > Decimal::new(1, 2) {
                 eprintln!(
                     "Somebody was left over with an oustanding balance greater than 1 cent: {:?}",
