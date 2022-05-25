@@ -109,11 +109,14 @@ async fn retrieve_outing_balance(
     Extension(pool): Extension<PgPool>,
     Path(outing_id): Path<i32>,
 ) -> Result<Json<Balance>, (StatusCode, String)> {
-    let result = sqlx::query_as("SELECT SUM(amount) AS total FROM expenses WHERE outing_id = $1")
-        .bind(outing_id)
-        .fetch_one(&pool)
-        .await
-        .map_err(internal_error)?;
+    let result = sqlx::query_as(
+        "SELECT COALESCE(SUM(amount), 0) AS total \
+         FROM expenses WHERE outing_id = $1",
+    )
+    .bind(outing_id)
+    .fetch_one(&pool)
+    .await
+    .map_err(internal_error)?;
 
     Ok(Json(result))
 }
@@ -140,6 +143,17 @@ async fn list_outings(
     Extension(pool): Extension<PgPool>,
 ) -> Result<Json<Vec<Outing>>, (StatusCode, String)> {
     let result = sqlx::query_as("SELECT * FROM outings LIMIT 500")
+        .fetch_all(&pool)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(Json(result))
+}
+
+async fn list_people(
+    Extension(pool): Extension<PgPool>,
+) -> Result<Json<Vec<Person>>, (StatusCode, String)> {
+    let result = sqlx::query_as("SELECT * FROM people LIMIT 500")
         .fetch_all(&pool)
         .await
         .map_err(internal_error)?;
@@ -293,8 +307,7 @@ async fn finish_outing(
     Ok(Json(results))
 }
 
-#[shuttle_service::main]
-async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Error> {
+pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
     pool.execute(include_str!("../schema.sql"))
         .await
         .map_err(CustomError::new)?;
@@ -306,9 +319,10 @@ async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Erro
         .route("/:id", get(retrieve_outing))
         .route("/:id/balance", get(retrieve_outing_balance))
         .route("/:id/expenses", get(retrieve_outing_expenses))
-        .route("/:outing_id/finish", get(finish_outing));
+        .route("/:id/finish", get(finish_outing));
 
     let person_routes = Router::new()
+        .route("/", get(list_people))
         .route("/", post(create_person))
         .route("/:id", get(retrieve_person));
 
@@ -330,7 +344,10 @@ async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Erro
         )
         .layer(Extension(pool));
 
-    let sync_wrapper = SyncWrapper::new(router);
+    Ok(router)
+}
 
-    Ok(sync_wrapper)
+#[shuttle_service::main]
+async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Error> {
+    Ok(SyncWrapper::new(app(pool).await?))
 }

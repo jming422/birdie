@@ -5,10 +5,10 @@ edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/jming422/birdie.git"
-include = ["/LICENSE", "/Shuttle.toml", "/schema.sql", "/src", "/js/build"]
+include = ["/LICENSE", "/Shuttle.toml", "/schema.sql", "/src", "/js/build", "!.*"]
 
 [lib]
-crate-type = ["cdylib"]
+# crate-type = ["cdylib"]
 
 [dependencies]
 axum = "0.5"
@@ -19,3 +19,4 @@ shuttle-service = { version = "0.2", features = ["sqlx-postgres", "web-axum"] }
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "decimal", "chrono"] }
 sync_wrapper = "0.1"
 tower-http = { version = "0.3", features = ["fs"] }
+tokio = { version = "1.0", features = ["full"] }
