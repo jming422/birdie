@@ -188,5 +188,5 @@ node_modules/
 
 size-plugin.json
 /js/build/
-/js/build.tar.gz
+/js.tar.gz
 /frontend/

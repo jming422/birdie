@@ -353,7 +353,7 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
 
 pub fn unpack_frontend() -> std::io::Result<()> {
     println!("Unpacking frontend bundle");
-    let tar = GzDecoder::new(include_bytes!("../js/build.tar.gz").as_slice());
+    let tar = GzDecoder::new(include_bytes!("../js.tar.gz").as_slice());
     let mut archive = Archive::new(tar);
     archive.unpack("./frontend")?;
     Ok(())

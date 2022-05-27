@@ -5,7 +5,7 @@ edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/jming422/birdie.git"
-exclude = ["/js", ".*"]
+include = ["/*", "!/js/", "!/frontend/", "!.*"]
 
 [lib]
 crate-type = ["lib", "cdylib"]
