@@ -190,3 +190,4 @@ size-plugin.json
 /js/build/
 /js.tar.gz
 /frontend/
+Secrets.toml

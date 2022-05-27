@@ -21,22 +21,27 @@
 #![warn(clippy::all)]
 
 use std::collections::VecDeque;
+use std::io;
 
+use async_compression::tokio::bufread::GzipDecoder;
 use axum::{
     extract::Path,
     http::StatusCode,
     routing::{get, get_service, post, put},
     Extension, Json, Router,
 };
-use flate2::read::GzDecoder;
-use shuttle_service::{error::CustomError, ShuttleAxum};
+use shuttle_service::{error::CustomError, SecretStore, ShuttleAxum};
 use sqlx::{types::Decimal, Executor, PgPool};
 use sync_wrapper::SyncWrapper;
-use tar::Archive;
+use tokio_stream::StreamExt;
+use tokio_tar::Archive;
+use tokio_util::io::StreamReader;
 use tower_http::services::ServeDir;
 
 mod models;
 use models::*;
+
+mod s3;
 
 /// Utility function for mapping any error into a `400 Bad Request`
 /// response.
@@ -351,16 +356,28 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
     Ok(router)
 }
 
-pub fn unpack_frontend() -> std::io::Result<()> {
+pub async fn unpack_frontend(pool: &PgPool) -> Result<(), shuttle_service::Error> {
+    println!("Downloading frontend bundle from S3");
+    let bucket = pool.get_secret("DEPLOY_BUCKET").await?;
+    let s3_result = s3::download_object(pool, bucket, "birdie-js.tar.gz").await?;
+
     println!("Unpacking frontend bundle");
-    let tar = GzDecoder::new(include_bytes!("../js.tar.gz").as_slice());
+    let gz = StreamReader::new(
+        s3_result
+            .body
+            // StreamReader requires that the Item's Result Error type is an
+            // io::Error, not just any error (like an AWS SdkError), so we have
+            // to wrap any SdkErrors in io::Errors.
+            .map(|item| item.map_err(|e| io::Error::new(io::ErrorKind::Other, e))),
+    );
+    let tar = GzipDecoder::new(gz);
     let mut archive = Archive::new(tar);
-    archive.unpack("./frontend")?;
+    archive.unpack("./frontend").await?;
     Ok(())
 }
 
 #[shuttle_service::main]
 async fn axum(pool: PgPool) -> ShuttleAxum {
-    unpack_frontend()?;
+    unpack_frontend(&pool).await?;
     Ok(SyncWrapper::new(app(pool).await?))
 }

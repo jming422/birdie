@@ -59,7 +59,7 @@ export const ListOutings: FunctionalComponent = () => {
 
   return (
     <div>
-      <h1>{`Hi, ${user.name} - what's up?`}</h1>
+      <h1>Hi, {user.name} - what&apos;s up?</h1>
       {!outings ? (
         'Loading...'
       ) : !outings.length ? (

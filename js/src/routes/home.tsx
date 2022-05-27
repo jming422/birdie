@@ -44,7 +44,7 @@ const Home: FunctionalComponent = () => {
               </li>
             ))}
           </ul>
-          {"Not here? Add yourself! What's your name?"}
+          Not here? Add yourself! What&apos;s your name?
           <input onInput={handleInput} />
           <button onClick={createAndSetPerson}>Add</button>
         </div>
