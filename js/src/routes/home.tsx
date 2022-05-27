@@ -33,7 +33,6 @@ const Home: FunctionalComponent = () => {
       <h1>Who are you?</h1>
       {error ? (
         <p>Error: {error.message}</p>
-        <p>Rats, error: {error.message}</p>
       ) : !data ? (
         <p>Loading...</p>
       ) : (
