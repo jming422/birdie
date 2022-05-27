@@ -14,7 +14,7 @@ npm-install: js/package.json
 	cd js && npm install
 
 deploy: build
-	cargo shuttle deploy
+	cargo shuttle deploy --allow-dirty
 
 dev-backend:
 	cargo run
