@@ -28,9 +28,11 @@ use axum::{
     routing::{get, get_service, post, put},
     Extension, Json, Router,
 };
-use shuttle_service::error::CustomError;
+use flate2::read::GzDecoder;
+use shuttle_service::{error::CustomError, ShuttleAxum};
 use sqlx::{types::Decimal, Executor, PgPool};
 use sync_wrapper::SyncWrapper;
+use tar::Archive;
 use tower_http::services::ServeDir;
 
 mod models;
@@ -308,10 +310,12 @@ async fn finish_outing(
 }
 
 pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
+    println!("Updating database schema");
     pool.execute(include_str!("../schema.sql"))
         .await
         .map_err(CustomError::new)?;
 
+    println!("Building router");
     let outing_routes = Router::new()
         .route("/", get(list_outings))
         .route("/", post(create_outing))
@@ -338,7 +342,7 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
                 .nest("/expenses", expense_routes),
         )
         .fallback(
-            get_service(ServeDir::new("./js/build")).handle_error(|_e| async {
+            get_service(ServeDir::new("./frontend")).handle_error(|_e| async {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
             }),
         )
@@ -347,7 +351,16 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
     Ok(router)
 }
 
+pub fn unpack_frontend() -> std::io::Result<()> {
+    println!("Unpacking frontend bundle");
+    let tar = GzDecoder::new(include_bytes!("../js/build.tar.gz").as_slice());
+    let mut archive = Archive::new(tar);
+    archive.unpack("./frontend")?;
+    Ok(())
+}
+
 #[shuttle_service::main]
-async fn axum(pool: PgPool) -> Result<SyncWrapper<Router>, shuttle_service::Error> {
+async fn axum(pool: PgPool) -> ShuttleAxum {
+    unpack_frontend()?;
     Ok(SyncWrapper::new(app(pool).await?))
 }

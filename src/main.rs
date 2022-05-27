@@ -7,6 +7,9 @@ use birdie::app;
 
 #[tokio::main]
 async fn main() {
+    // birdie::unpack_frontend().unwrap();
+
+    println!("Connecting to Postgres");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect("postgres://localhost:/birdie")
@@ -16,7 +19,7 @@ async fn main() {
     let router = app(pool).await.unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
-    println!("listening on {}", addr);
+    println!("Listening on {}", addr);
     Server::bind(&addr)
         .serve(router.into_make_service())
         .await
