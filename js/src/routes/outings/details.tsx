@@ -6,8 +6,9 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, h } from 'preact';
+import { FunctionalComponent, Fragment, h } from 'preact';
 import { useContext, useState } from 'preact/hooks';
+import { DateTime } from 'luxon';
 
 import {
   useOuting,
@@ -20,6 +21,7 @@ import { useCreateExpense, type Expense } from '../../models/expense';
 import { formatUsd } from '../../utils';
 import { User } from '../../context';
 import OutingHeader from '../../components/outingHeader';
+import { Callout, Container, Label, Button } from '../../components/common';
 
 interface CreateExpenseProps {
   outingId: number;
@@ -58,16 +60,17 @@ const CreateExpense = ({ outingId, refresh }: CreateExpenseProps) => {
   }
 
   return (
-    <div>
-      Add a new expense:
-      <div>
-        <label>Amount: </label> <input onInput={handleAmountInput} />
+    <div class="my-2">
+      <Callout>Add a new expense:</Callout>
+      <div class="mb-2">
+        <Label>Amount:</Label>
+        <input onInput={handleAmountInput} />
       </div>
-      <div>
-        <label>Description (optional): </label>
+      <div class="mb-2">
+        <Label>Description (optional): </Label>
         <input onInput={handleDescInput} />
       </div>
-      <button onClick={createExpenseAndRefresh}>Add</button>
+      <Button onClick={createExpenseAndRefresh}>Add</Button>
     </div>
   );
 };
@@ -89,14 +92,26 @@ const OutingPage = ({
     <div>
       <OutingHeader {...{ outing, balance }} showButton />
       <CreateExpense outingId={outing.outingId} refresh={refresh} />
-      <ul>
-        {expenses?.map(({ expenseId, amount, createdAt, description }) => (
-          <li key={expenseId}>
-            {formatUsd(amount)} at {createdAt.toLocaleString()}
-            {description && ` for ${description}`}
-          </li>
-        ))}
-      </ul>
+      <div class="pt-2">
+        {/* TODO this spacing & divider thing is not working */}
+        <div class="width-full height-100 bg-cyan-400" />
+        <ul class="mt-2">
+          {expenses?.map(({ expenseId, amount, createdAt, description }) => (
+            <li key={expenseId} class="mb-1">
+              <span class="font-semibold">{formatUsd(amount)}</span>
+              {/* TODO italic is not working */}
+              <span class="font-italic"> on </span>
+              {createdAt.toLocaleString(DateTime.DATETIME_FULL)}
+              {description && (
+                <>
+                  <span class="font-italic"> for </span>
+                  <span class="font-semibold">{description}</span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };
@@ -114,7 +129,7 @@ export const OutingRoute: FunctionalComponent<OutingRouteProps> = ({ id }) => {
   const error = outingError ?? balanceError ?? expensesError;
 
   return (
-    <div>
+    <Container>
       {error ? (
         <span>Error: {error.message}</span>
       ) : !outing ? (
@@ -125,7 +140,7 @@ export const OutingRoute: FunctionalComponent<OutingRouteProps> = ({ id }) => {
           refresh={() => refreshOuting((x) => x + 1)}
         />
       )}
-    </div>
+    </Container>
   );
 };
 

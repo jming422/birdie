@@ -67,7 +67,7 @@ const App: FunctionalComponent = () => {
   }, [user]);
 
   return (
-    <div id="preact_root">
+    <div id="preact_root" class="bg-teal-100 text-slate-800">
       <FetchProvider url="/api" options={fetchOpts}>
         <User.Provider value={{ user, setUser }}>
           <Router>

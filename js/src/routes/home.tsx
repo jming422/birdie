@@ -13,6 +13,8 @@ import { useContext, useState } from 'preact/hooks';
 import { User } from '../context';
 import { type Person, useCreatePerson, usePersonList } from '../models/person';
 
+import { Button, Callout, Container, Title } from '../components/common';
+
 const Home: FunctionalComponent = () => {
   const { setUser } = useContext(User);
 
@@ -37,27 +39,36 @@ const Home: FunctionalComponent = () => {
   }
 
   return (
-    <div>
-      <h1>Who are you?</h1>
+    <Container>
+      <Title>Who are you?</Title>
       {error ? (
-        <p>Error: {error.message}</p>
+        <p class="text-red-500 font-semibold">Error: {error.message}</p>
       ) : !data ? (
-        <p>Loading...</p>
+        <p class="text-slate-600">Loading...</p>
       ) : (
         <div>
-          <ul>
+          <ul class="py-4 space-y-1 text-xl">
+            {/* TODO underline */}
             {data.map((p, i) => (
               <li key={i} onClick={() => setPerson(p)}>
                 {p.name}
               </li>
             ))}
           </ul>
-          Not here? Add yourself! What&apos;s your name?
-          <input onInput={handleInput} />
-          <button onClick={createAndSetPerson}>Add</button>
+          <Callout>
+            {/* TODO border radius */}
+            Not here? Add yourself! What&apos;s your name?
+          </Callout>
+          <div class="flex flex-row flex-1">
+            <input onInput={handleInput} class="mr-2" />
+            <Button onClick={createAndSetPerson}>
+              {/* TODO border radius */}
+              Add
+            </Button>
+          </div>
         </div>
       )}
-    </div>
+    </Container>
   );
 };
 

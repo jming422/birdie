@@ -20,6 +20,7 @@ import {
 import { formatUsd } from '../../utils';
 import { User } from '../../context';
 import OutingHeader from '../../components/outingHeader';
+import { Container, Subtitle } from '../../components/common';
 
 interface ResultsPageProps {
   outing: OutingDetails;
@@ -53,41 +54,45 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
   return (
     <div>
       <OutingHeader {...{ outing, balance }} />
-      <div>
-        <h2>You owe:</h2>
-        {payingTo.length ? (
-          <ul>
-            {payingTo.map(({ to, amount }) => (
+      <div class="text-lg mt-2">
+        <Subtitle>You owe:</Subtitle>
+        <ul class="pt-1 pb-4 pl-4">
+          {payingTo.length ? (
+            payingTo.map(({ to, amount }) => (
               <li key={`to-${to}`}>
                 {formatUsd(amount)} to {getPersonName(to)}
               </li>
-            ))}
-          </ul>
-        ) : (
-          'Nobody, nice!'
-        )}
-        <h2>You are owed:</h2>
-        {gettingFrom.length ? (
-          <ul>
-            {gettingFrom.map(({ from, amount }) => (
+            ))
+          ) : (
+            <li>Nobody, nice!</li>
+          )}
+        </ul>
+        <Subtitle>You are owed:</Subtitle>
+        <ul class="pt-1 pb-4 pl-4">
+          {gettingFrom.length ? (
+            gettingFrom.map(({ from, amount }) => (
               <li key={`from-${from}`}>
                 {formatUsd(amount)} from {getPersonName(from)}
               </li>
-            ))}
-          </ul>
-        ) : (
-          'Nothing, rats!'
-        )}
+            ))
+          ) : (
+            <li>Nothing, rats!</li>
+          )}
+        </ul>
 
-        <h2>{"Other peoples' stuff"}</h2>
-        {others.length
-          ? others.map(({ to, from, amount }) => (
+        <Subtitle>Other peoples&apos; stuff</Subtitle>
+        <ul class="pt-1 pb-4 pl-4">
+          {others.length ? (
+            others.map(({ to, from, amount }) => (
               <li key={`others-${to}-${from}`}>
                 {formatUsd(amount)} from {getPersonName(from)} to{' '}
                 {getPersonName(to)}
               </li>
             ))
-          : 'Nothin to see here'}
+          ) : (
+            <li>Nothin to see here</li>
+          )}
+        </ul>
       </div>
     </div>
   );
@@ -107,7 +112,7 @@ export const ResultsRoute: FunctionalComponent<ResultsRouteProps> = ({
   const error = outingError ?? balanceError ?? resultsError;
 
   return (
-    <div>
+    <Container>
       {error ? (
         <span>Error: {error.message}</span>
       ) : !outing || !results ? (
@@ -115,7 +120,7 @@ export const ResultsRoute: FunctionalComponent<ResultsRouteProps> = ({
       ) : (
         <ResultsPage {...{ outing, balance, results }} />
       )}
-    </div>
+    </Container>
   );
 };
 

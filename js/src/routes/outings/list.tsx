@@ -8,23 +8,22 @@
  */
 import { FunctionalComponent, h } from 'preact';
 import { useContext, useState } from 'preact/hooks';
+import { route } from 'preact-router';
 
 import { type Outing, useOutings, useCreateOuting } from '../../models/outing';
 import { User } from '../../context';
-import { route } from 'preact-router';
+import { Button, Callout, Container, Title } from '../../components/common';
 
 const Card = ({ outingId, createdAt, name }: Outing) => {
   return (
-    <div class="flex flex-col mb-12 overflow-hidden cursor-pointer">
+    <div class="flex flex-col mb-8 p-4 overflow-hidden cursor-pointer bg-teal-200">
       <a href={`/outings/${outingId}`}>
         <div class="flex flex-col justify-between flex-1">
-          <div class="flex pt-6 space-x-1 text-sm text-slate-500">
+          <div class="flex space-x-1 text-sm text-slate-600">
             <span>{createdAt.toLocaleString()}</span>
           </div>
-          <span class="block mt-2 space-y-6">
-            <h3 class="text-2xl font-semibold leading-none tracking-tighter">
-              {name}
-            </h3>
+          <span class="block space-y-4">
+            <h3 class="text-2xl font-semibold tracking-tighter">{name}</h3>
           </span>
         </div>
       </a>
@@ -35,7 +34,7 @@ const Card = ({ outingId, createdAt, name }: Outing) => {
 const CardContainer = ({ outings }: { outings: Outing[] }) => {
   return (
     <div class="relative mx-auto max-w-7xl">
-      <div class="grid max-w-lg gap-12 mx-auto mt-12 lg:grid-cols-3 lg:max-w-none">
+      <div class="grid max-w-lg gap-8 mx-auto mt-8 lg:grid-cols-3 lg:max-w-none">
         {outings.map((o) => (
           <Card key={o.outingId} {...o} />
         ))}
@@ -66,8 +65,8 @@ export const ListOutings: FunctionalComponent = () => {
   }
 
   return (
-    <div>
-      <h1>Hi, {user.name} - what&apos;s up?</h1>
+    <Container>
+      <Title>Hi, {user.name} - what&apos;s up?</Title>
       {!outings ? (
         'Loading...'
       ) : !outings.length ? (
@@ -76,11 +75,13 @@ export const ListOutings: FunctionalComponent = () => {
         <CardContainer {...{ outings }} />
       )}
       <div>
-        Start a new outing! Just give it a name:
-        <input onInput={handleInput} />
-        <button onClick={createOutingAndRoute}>Add</button>
+        <Callout>Start a new outing! Just give it a name:</Callout>
+        <div class="flex flex-row flex-1">
+          <input onInput={handleInput} class="mr-2" />
+          <Button onClick={createOutingAndRoute}>Add</Button>
+        </div>
       </div>
-    </div>
+    </Container>
   );
 };
 
