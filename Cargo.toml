@@ -5,10 +5,10 @@ edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/jming422/birdie.git"
-exclude = [".*", "/js/"]
+include = ["/src", "/*", "!.*", "!/js", "!/js.tar.gz", "!/frontend"]
 
 [lib]
-crate-type = ["lib", "cdylib"]
+crate-type = ["lib"] # ["cdylib"]
 
 [dependencies]
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
@@ -16,7 +16,9 @@ aws-config = "0.12.0"
 aws-sdk-s3 = "0.12.0"
 axum = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
+lazy_static = "1.4"
 log = "0.4"
+harsh = "0.2"
 serde = "1.0"
 shuttle-service = { version = "0.3", features = ["secrets", "sqlx-postgres", "web-axum"] }
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "decimal", "chrono"] }

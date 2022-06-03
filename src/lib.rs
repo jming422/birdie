@@ -19,6 +19,8 @@
  */
 
 #![warn(clippy::all)]
+#[macro_use]
+extern crate lazy_static;
 
 use std::collections::VecDeque;
 use std::io;
@@ -70,13 +72,13 @@ async fn create_outing(
            INSERT INTO outings(name) VALUES ($1) RETURNING * \
          ), \
          new_outing_person AS ( \
-           INSERT INTO outing_people(outing_id, person_id) \
+           INSERT INTO outing_people(outing_id, name) \
            SELECT outing_id, $2 FROM new_outing \
          ) \
          SELECT * FROM new_outing",
     )
     .bind(&payload.name)
-    .bind(&payload.person_id)
+    .bind(&payload.person_name)
     .fetch_one(&pool)
     .await
     .map_err(bad_request)?;
@@ -86,22 +88,20 @@ async fn create_outing(
 
 async fn retrieve_outing(
     Extension(pool): Extension<PgPool>,
-    Path(outing_id): Path<i32>,
+    Path(outing_id): Path<OutingId>,
 ) -> Result<Json<OutingDetails>, (StatusCode, String)> {
     let outing = sqlx::query_as("SELECT * FROM outings WHERE outing_id = $1")
-        .bind(outing_id)
+        .bind(&outing_id)
         .fetch_optional(&pool)
         .await
         .map_err(internal_error)?;
 
     if let Some(outing) = outing {
-        let people = sqlx::query_as(
-            "SELECT p.* FROM outing_people NATURAL JOIN people AS p WHERE outing_id = $1",
-        )
-        .bind(outing_id)
-        .fetch_all(&pool)
-        .await
-        .map_err(internal_error)?;
+        let people = sqlx::query_as("SELECT name FROM outing_people WHERE outing_id = $1")
+            .bind(&outing_id)
+            .fetch_all(&pool)
+            .await
+            .map_err(internal_error)?;
 
         Ok(Json(OutingDetails::new(outing, people)))
     } else {
@@ -114,7 +114,7 @@ async fn retrieve_outing(
 
 async fn retrieve_outing_balance(
     Extension(pool): Extension<PgPool>,
-    Path(outing_id): Path<i32>,
+    Path(outing_id): Path<OutingId>,
 ) -> Result<Json<Balance>, (StatusCode, String)> {
     let result = sqlx::query_as(
         "SELECT COALESCE(SUM(amount), 0) AS total \
@@ -128,7 +128,10 @@ async fn retrieve_outing_balance(
     Ok(Json(result))
 }
 
-async fn query_outing_expenses(pool: &PgPool, outing_id: i32) -> Result<Vec<Expense>, sqlx::Error> {
+async fn query_outing_expenses(
+    pool: &PgPool,
+    outing_id: OutingId,
+) -> Result<Vec<Expense>, sqlx::Error> {
     sqlx::query_as("SELECT * FROM expenses WHERE outing_id = $1")
         .bind(outing_id)
         .fetch_all(pool)
@@ -137,7 +140,7 @@ async fn query_outing_expenses(pool: &PgPool, outing_id: i32) -> Result<Vec<Expe
 
 async fn retrieve_outing_expenses(
     Extension(pool): Extension<PgPool>,
-    Path(outing_id): Path<i32>,
+    Path(outing_id): Path<OutingId>,
 ) -> Result<Json<Vec<Expense>>, (StatusCode, String)> {
     let result = query_outing_expenses(&pool, outing_id)
         .await
@@ -157,57 +160,13 @@ async fn list_outings(
     Ok(Json(result))
 }
 
-async fn list_people(
-    Extension(pool): Extension<PgPool>,
-) -> Result<Json<Vec<Person>>, (StatusCode, String)> {
-    let result = sqlx::query_as("SELECT * FROM people LIMIT 500")
-        .fetch_all(&pool)
-        .await
-        .map_err(internal_error)?;
-
-    Ok(Json(result))
-}
-
-async fn create_person(
-    Extension(pool): Extension<PgPool>,
-    Json(payload): Json<PersonNew>,
-) -> Result<Json<Person>, (StatusCode, String)> {
-    let result = sqlx::query_as("INSERT INTO people(name) VALUES ($1) RETURNING *")
-        .bind(&payload.name)
-        .fetch_one(&pool)
-        .await
-        .map_err(bad_request)?;
-
-    Ok(Json(result))
-}
-
-async fn retrieve_person(
-    Extension(pool): Extension<PgPool>,
-    Path(person_id): Path<i32>,
-) -> Result<Json<Person>, (StatusCode, String)> {
-    let result = sqlx::query_as("SELECT * FROM people WHERE person_id = $1")
-        .bind(person_id)
-        .fetch_optional(&pool)
-        .await
-        .map_err(internal_error)?;
-
-    if let Some(result) = result {
-        Ok(Json(result))
-    } else {
-        Err((
-            StatusCode::NOT_FOUND,
-            "Person with given ID not found".to_string(),
-        ))
-    }
-}
-
 async fn create_expense(
     Extension(pool): Extension<PgPool>,
     Json(payload): Json<ExpenseNew>,
 ) -> Result<Json<Expense>, (StatusCode, String)> {
     let result = sqlx::query_as(
         "WITH op AS ( \
-           INSERT INTO outing_people(outing_id, person_id) \
+           INSERT INTO outing_people(outing_id, name) \
            VALUES ($1, $2) \
            ON CONFLICT DO NOTHING
          ) \
@@ -215,7 +174,7 @@ async fn create_expense(
          VALUES ($1, $2, $3, $4) RETURNING *",
     )
     .bind(&payload.outing_id)
-    .bind(&payload.person_id)
+    .bind(&payload.person_name)
     .bind(&payload.amount)
     .bind(&payload.description)
     .fetch_one(&pool)
@@ -230,12 +189,11 @@ async fn join_outing(
     Json(payload): Json<OutingPerson>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query(
-        "INSERT INTO outing_people(outing_id, person_id) \
-         VALUES ($1, $2) \
-         ON CONFLICT DO NOTHING",
+        "INSERT INTO outing_people(outing_id, name) \
+         VALUES ($1, $2)", // permit conflicts to result in bad request errors
     )
     .bind(&payload.outing_id)
-    .bind(&payload.person_id)
+    .bind(&payload.name)
     .execute(&pool)
     .await
     .map_err(bad_request)?;
@@ -245,7 +203,7 @@ async fn join_outing(
 
 async fn finish_outing(
     Extension(pool): Extension<PgPool>,
-    Path(outing_id): Path<i32>,
+    Path(outing_id): Path<OutingId>,
 ) -> Result<Json<Vec<OutingResult>>, (StatusCode, String)> {
     // Here, a positive diff from avg indicates debt to the group, and negative
     // means the person is owed by the group
@@ -291,15 +249,15 @@ async fn finish_outing(
             }
 
             results.push(OutingResult {
-                from: most_indebted.person_id,
-                to: most_indebted.person_id,
+                from: most_indebted.name.clone(),
+                to: most_indebted.name,
                 amount: most_indebted.diff_from_avg,
             });
         } else {
             let most_owed = people_debts.front_mut().unwrap();
             results.push(OutingResult {
-                from: most_indebted.person_id,
-                to: most_owed.person_id,
+                from: most_indebted.name,
+                to: most_owed.name.clone(),
                 amount: most_indebted.diff_from_avg,
             });
             // This works because most_owed's diff should be negative, while
@@ -330,11 +288,6 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
         .route("/:id/expenses", get(retrieve_outing_expenses))
         .route("/:id/finish", get(finish_outing));
 
-    let person_routes = Router::new()
-        .route("/", get(list_people))
-        .route("/", post(create_person))
-        .route("/:id", get(retrieve_person));
-
     let expense_routes = Router::new().route("/", post(create_expense));
 
     let router = Router::new()
@@ -343,7 +296,6 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
             Router::new()
                 .route("/ping", get(|| async { "pong" }))
                 .nest("/outings", outing_routes)
-                .nest("/people", person_routes)
                 .nest("/expenses", expense_routes),
         )
         .fallback(
