@@ -14,7 +14,7 @@ use sqlx::FromRow;
 use std::fmt::Display;
 
 lazy_static! {
-    static ref HARSH: Harsh = Harsh::builder()
+    pub static ref HARSH: Harsh = Harsh::builder()
         .salt("birdie hashids")
         .alphabet("abcdefghijklmnopqrstuvwxyz1234567890")
         .length(4)
@@ -143,6 +143,7 @@ pub struct Expense {
     pub created_at: DateTime<Utc>,
     pub outing_id: OutingId,
     pub person_name: String,
+    #[serde(with = "rust_decimal::serde::float")]
     pub amount: Decimal,
     pub description: Option<String>,
 }
@@ -157,6 +158,7 @@ pub struct ExpenseNew {
 
 #[derive(Serialize, FromRow)]
 pub struct Balance {
+    #[serde(with = "rust_decimal::serde::float")]
     pub total: Decimal,
 }
 
@@ -170,5 +172,6 @@ pub struct PersonDiff {
 pub struct OutingResult {
     pub from: String,
     pub to: String,
+    #[serde(with = "rust_decimal::serde::float")]
     pub amount: Decimal,
 }

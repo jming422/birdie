@@ -32,7 +32,7 @@ export const Callout: FunctionalComponent = ({ children }) => {
 
 export const Button: FunctionalComponent<
   JSX.HTMLAttributes<HTMLButtonElement>
-> = ({ children, ...props }: any) => {
+> = ({ children, ...props }) => {
   return (
     <button class="p-2 font-bold bg-cyan-500 text-white" {...props}>
       {children}

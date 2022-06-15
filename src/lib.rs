@@ -38,9 +38,9 @@ use sync_wrapper::SyncWrapper;
 use tokio_stream::StreamExt;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
-mod models;
+pub mod models;
 use models::*;
 
 mod s3;
@@ -170,7 +170,7 @@ async fn create_expense(
            VALUES ($1, $2) \
            ON CONFLICT DO NOTHING
          ) \
-         INSERT INTO expenses(outing_id, person_id, amount, description) \
+         INSERT INTO expenses(outing_id, person_name, amount, description) \
          VALUES ($1, $2, $3, $4) RETURNING *",
     )
     .bind(&payload.outing_id)
@@ -210,17 +210,17 @@ async fn finish_outing(
     let mut people_debts: VecDeque<PersonDiff> = VecDeque::from(
         sqlx::query_as(
             "WITH expenses_per_person AS ( \
-               SELECT person_id, SUM(amount) AS amount_paid \
-               FROM outing_people \
-               NATURAL LEFT JOIN expenses \
-               WHERE outing_id = $1 \
-               GROUP BY person_id \
+               SELECT op.name, SUM(ex.amount) AS amount_paid \
+               FROM outing_people AS op \
+               LEFT JOIN expenses AS ex ON (op.outing_id = ex.outing_id AND op.name = ex.person_name) \
+               WHERE op.outing_id = $1 \
+               GROUP BY op.name \
              ), group_avg AS ( \
                SELECT AVG(amount_paid) FROM expenses_per_person
              ) \
              SELECT \
-               person_id, \
-               (SELECT avg FROM group_avg) - amount_paid AS diff_from_avg \
+               name, \
+               ROUND((SELECT avg FROM group_avg) - amount_paid, 4) AS diff_from_avg \
              FROM expenses_per_person",
         )
         .bind(outing_id)
@@ -243,16 +243,15 @@ async fn finish_outing(
         if people_debts.is_empty() {
             if most_indebted.diff_from_avg > Decimal::new(1, 2) {
                 eprintln!(
-                    "Somebody was left over with an oustanding balance greater than 1 cent: {:?}",
+                    "Somebody was left over with an oustanding balance greater than 1 cent, telling them to... pay themselves lol: {:?}",
                     most_indebted
                 );
+                results.push(OutingResult {
+                    from: most_indebted.name.clone(),
+                    to: most_indebted.name,
+                    amount: most_indebted.diff_from_avg,
+                });
             }
-
-            results.push(OutingResult {
-                from: most_indebted.name.clone(),
-                to: most_indebted.name,
-                amount: most_indebted.diff_from_avg,
-            });
         } else {
             let most_owed = people_debts.front_mut().unwrap();
             results.push(OutingResult {
@@ -272,12 +271,13 @@ async fn finish_outing(
     Ok(Json(results))
 }
 
-pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
+pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
     println!("Updating database schema");
-    pool.execute(include_str!("../schema.sql"))
-        .await
-        .map_err(CustomError::new)?;
+    pool.execute(include_str!("../schema.sql")).await?;
+    Ok(())
+}
 
+pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_service::Error> {
     println!("Building router");
     let outing_routes = Router::new()
         .route("/", get(list_outings))
@@ -290,16 +290,19 @@ pub async fn app(pool: PgPool) -> Result<Router, shuttle_service::Error> {
 
     let expense_routes = Router::new().route("/", post(create_expense));
 
+    let api_routes = Router::new()
+        .route("/ping", get(|| async { "pong" }))
+        .nest("/outings", outing_routes)
+        .nest("/expenses", expense_routes);
+
     let router = Router::new()
-        .nest(
-            "/api",
-            Router::new()
-                .route("/ping", get(|| async { "pong" }))
-                .nest("/outings", outing_routes)
-                .nest("/expenses", expense_routes),
-        )
+        .nest("/api", api_routes)
         .fallback(
-            get_service(ServeDir::new("./frontend")).handle_error(|_e| async {
+            get_service(
+                ServeDir::new(js_build_dir)
+                    .fallback(ServeFile::new(format!("{}/index.html", js_build_dir))),
+            )
+            .handle_error(|_e| async {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
             }),
         )
@@ -331,5 +334,6 @@ pub async fn unpack_frontend(pool: &PgPool) -> Result<(), shuttle_service::Error
 #[shuttle_service::main]
 async fn axum(pool: PgPool) -> ShuttleAxum {
     unpack_frontend(&pool).await?;
-    Ok(SyncWrapper::new(app(pool).await?))
+    migrate(&pool).await.map_err(CustomError::new)?;
+    Ok(SyncWrapper::new(app(pool, "./frontend").await?))
 }

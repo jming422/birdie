@@ -13,20 +13,22 @@ use std::net::SocketAddr;
 use axum::Server;
 use sqlx::postgres::PgPoolOptions;
 
-use birdie::app;
+use birdie::{app, migrate};
 
 #[tokio::main]
 async fn main() {
-    println!("Connecting to Postgres");
+    println!("to Connecting Postgres");
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://localhost:/birdie")
+        .connect("postgres://localhost/birdie")
         .await
         .unwrap();
 
     // birdie::unpack_frontend(&pool).await.unwrap();
 
-    let router = app(pool).await.unwrap();
+    migrate(&pool).await.unwrap();
+
+    let router = app(pool, "./js/build").await.unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
     println!("Listening on {}", addr);

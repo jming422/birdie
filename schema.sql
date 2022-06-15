@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS expenses;
-TRUNCATE TABLE outing_people;
+DROP TABLE IF EXISTS outing_people;
 DROP TABLE IF EXISTS people;
 
 CREATE TABLE IF NOT EXISTS outings (
