@@ -186,13 +186,14 @@ async fn create_expense(
 
 async fn join_outing(
     Extension(pool): Extension<PgPool>,
-    Json(payload): Json<OutingPerson>,
+    Path(outing_id): Path<OutingId>,
+    Json(payload): Json<Named>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query(
         "INSERT INTO outing_people(outing_id, name) \
-         VALUES ($1, $2)", // permit conflicts to result in bad request errors
+         VALUES ($1, $2) ON CONFLICT DO NOTHING", // conflicts should be no-ops
     )
-    .bind(&payload.outing_id)
+    .bind(&outing_id)
     .bind(&payload.name)
     .execute(&pool)
     .await
@@ -280,13 +281,12 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
 pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_service::Error> {
     println!("Building router");
     let outing_routes = Router::new()
-        .route("/", get(list_outings))
-        .route("/", post(create_outing))
-        .route("/join", put(join_outing))
+        .route("/", get(list_outings).post(create_outing))
         .route("/:id", get(retrieve_outing))
         .route("/:id/balance", get(retrieve_outing_balance))
         .route("/:id/expenses", get(retrieve_outing_expenses))
-        .route("/:id/finish", get(finish_outing));
+        .route("/:id/finish", get(finish_outing))
+        .route("/:id/join", put(join_outing));
 
     let expense_routes = Router::new().route("/", post(create_expense));
 

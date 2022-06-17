@@ -16,7 +16,7 @@ use std::fmt::Display;
 lazy_static! {
     pub static ref HARSH: Harsh = Harsh::builder()
         .salt("birdie hashids")
-        .alphabet("abcdefghijklmnopqrstuvwxyz1234567890")
+        .alphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
         .length(4)
         .build()
         .unwrap();
@@ -53,12 +53,12 @@ impl From<harsh::Error> for IdParseError {
 // the String type first.
 //
 // The first serde macro `try_from` says: When deserializing, always deserialize
-// the input as a String, then convert it to an OutingId using my
-// TryFrom<String> impl for OutingId
+// the input as a String, then convert it to an OutingId using my custom
+// impl TryFrom<String> for OutingId
 //
 // The second serde macro `into` says: When serializing, always convert the
-// OutingId to a String using my From<OutingId> impl for String, then serialize
-// that String
+// OutingId to a String using my custom impl From<OutingId> for String, then
+// serialize that String
 #[derive(Clone, Serialize, Deserialize, sqlx::Type)]
 #[serde(try_from = "String")]
 #[serde(into = "String")]
@@ -107,7 +107,7 @@ pub struct Outing {
     pub name: String,
 }
 
-#[derive(FromRow)]
+#[derive(Deserialize, Serialize, FromRow, PartialEq, Debug)]
 pub struct Named {
     pub name: String,
 }

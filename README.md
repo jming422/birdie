@@ -4,6 +4,8 @@ An excuse to experiment with deploying a Rust webapp using shuttle.rs
 
 Easily balances group outing expenses among friends, so that everybody gets to make the fewest money transfers as possible among one another, just at the end of the outing.
 
+There's no access control or anything, so you could totally enter your friend's already used name and impersonate them if you want. The server will be fine, but I'm not making any calls about what that'll do to your friendship 😉
+
 Named after the thing you play badminton with, which is also called a "shuttle" :)
 
 ## Secrets

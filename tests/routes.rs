@@ -157,11 +157,13 @@ async fn outings() {
     let map = body.as_object_mut().unwrap();
     let outing_id = get_string_key(map, "outing_id");
     let created_at = get_string_key(map, "created_at");
-    assert!(
-        birdie::models::HARSH.decode(&outing_id).is_ok(),
-        "outing_id wasn't a valid hashid, it was {}",
-        &outing_id
-    );
+
+    let dec_outing_id = birdie::models::HARSH
+        .decode(&outing_id)
+        .expect(format!("outing_id wasn't a valid hashid, it was {}", &outing_id).as_str())
+        .pop()
+        .unwrap();
+
     assert_eq!(body, json!({"name": "foo"}));
     assert!(
         DateTime::parse_from_rfc3339(&created_at).is_ok(),
@@ -176,11 +178,10 @@ async fn outings() {
         .oneshot(
             Request::builder()
                 .method(http::Method::PUT)
-                .uri("/api/outings/join")
+                .uri(format!("/api/outings/{}/join", &outing_id))
                 .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                 .body(Body::from(
-                    serde_json::to_vec(&json!({"outing_id": &outing_id, "name": test_person_two}))
-                        .unwrap(),
+                    serde_json::to_vec(&json!({ "name": test_person_two })).unwrap(),
                 ))
                 .unwrap(),
         )
@@ -188,6 +189,51 @@ async fn outings() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    let expt_people = vec![
+        birdie::models::Named {
+            name: test_person_one.to_string(),
+        },
+        birdie::models::Named {
+            name: test_person_two.to_string(),
+        },
+    ];
+
+    let sql_people: Vec<birdie::models::Named> =
+        sqlx::query_as("SELECT name FROM outing_people WHERE outing_id = $1")
+            .bind(dec_outing_id as i32)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(sql_people, expt_people);
+
+    // Repeat join should be a no-op without error
+    let response = get_app(&pool)
+        .await
+        .oneshot(
+            Request::builder()
+                .method(http::Method::PUT)
+                .uri(format!("/api/outings/{}/join", &outing_id))
+                .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                .body(Body::from(
+                    serde_json::to_vec(&json!({ "name": test_person_two })).unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    let sql_people: Vec<birdie::models::Named> =
+        sqlx::query_as("SELECT name FROM outing_people WHERE outing_id = $1")
+            .bind(dec_outing_id as i32)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(sql_people, expt_people);
 
     // Next we can make sure that the retrieve & list routes return the same thing
     let response = get_app(&pool)
@@ -436,8 +482,8 @@ async fn expenses() {
     assert_eq!(
         body_parsed,
         json!([
-                { "from": &person_two, "to": &person_three, "amount": 3.8867 },
-                { "from": &person_three, "to": &person_name, "amount": 1.7434 }
+            { "from": &person_two, "to": &person_three, "amount": 3.8867 },
+            { "from": &person_three, "to": &person_name, "amount": 1.7434 }
         ])
     );
 
