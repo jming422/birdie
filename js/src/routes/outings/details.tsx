@@ -6,7 +6,7 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, Fragment, h } from 'preact';
+import { type FunctionalComponent, Fragment, h } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 import { DateTime } from 'luxon';
 
@@ -19,21 +19,18 @@ import {
 } from '../../models/outing';
 import { useCreateExpense, type Expense } from '../../models/expense';
 import { formatUsd } from '../../utils';
-import { User } from '../../context';
 import OutingHeader from '../../components/outingHeader';
 import { Callout, Container, Label, Button } from '../../components/common';
+import { GlobalContext } from 'src/context';
 
 interface CreateExpenseProps {
-  outingId: number;
   refresh: () => void;
 }
 
-const CreateExpense = ({ outingId, refresh }: CreateExpenseProps) => {
-  const {
-    user: { personId },
-  } = useContext(User);
+const CreateExpense = ({ refresh }: CreateExpenseProps) => {
+  const { outingId, userName } = useContext(GlobalContext);
 
-  const createExpense = useCreateExpense(personId, outingId);
+  const createExpense = useCreateExpense(userName, outingId);
 
   const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
@@ -91,7 +88,7 @@ const OutingPage = ({
   return (
     <div>
       <OutingHeader {...{ outing, balance }} showButton />
-      <CreateExpense outingId={outing.outingId} refresh={refresh} />
+      <CreateExpense {...{ refresh }} />
       <div class="pt-2">
         {/* TODO this spacing & divider thing is not working */}
         <div class="width-full height-100 bg-cyan-400" />
@@ -116,15 +113,13 @@ const OutingPage = ({
   );
 };
 
-interface OutingRouteProps {
-  id: number;
-}
+export const OutingRoute: FunctionalComponent = () => {
+  const { outingId } = useContext(GlobalContext);
 
-export const OutingRoute: FunctionalComponent<OutingRouteProps> = ({ id }) => {
   const [refOut, refreshOuting] = useState(0);
-  const { data: outing, error: outingError } = useOuting(id, refOut);
-  const { data: balance, error: balanceError } = useOutingBalance(id);
-  const { data: expenses, error: expensesError } = useOutingExpenses(id);
+  const { data: outing, error: outingError } = useOuting(outingId, refOut);
+  const { data: balance, error: balanceError } = useOutingBalance(outingId);
+  const { data: expenses, error: expensesError } = useOutingExpenses(outingId);
 
   const error = outingError ?? balanceError ?? expensesError;
 

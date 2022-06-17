@@ -6,8 +6,8 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, h } from 'preact';
-import { useCallback, useContext } from 'preact/hooks';
+import { type FunctionalComponent, h } from 'preact';
+import { useContext } from 'preact/hooks';
 
 import {
   Balance,
@@ -18,7 +18,7 @@ import {
   useOutingBalance,
 } from '../../models/outing';
 import { formatUsd } from '../../utils';
-import { User } from '../../context';
+import { GlobalContext } from '../../context';
 import OutingHeader from '../../components/outingHeader';
 import { Container, Subtitle } from '../../components/common';
 
@@ -29,27 +29,17 @@ interface ResultsPageProps {
 }
 
 const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
-  const {
-    user: { personId: userId },
-  } = useContext(User);
+  const { userName } = useContext(GlobalContext);
 
   const payingTo = [];
   const gettingFrom = [];
   const others = [];
 
   for (const result of results) {
-    if (result.from === userId) payingTo.push(result);
-    else if (result.to === userId) gettingFrom.push(result);
+    if (result.from === userName) payingTo.push(result);
+    else if (result.to === userName) gettingFrom.push(result);
     else others.push(result);
   }
-
-  const getPersonName = useCallback(
-    (id: number) => {
-      const person = outing.people.find(({ personId }) => id === personId);
-      return person?.name;
-    },
-    [outing]
-  );
 
   return (
     <div>
@@ -60,7 +50,7 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
           {payingTo.length ? (
             payingTo.map(({ to, amount }) => (
               <li key={`to-${to}`}>
-                {formatUsd(amount)} to {getPersonName(to)}
+                {formatUsd(amount)} to {to}
               </li>
             ))
           ) : (
@@ -72,7 +62,7 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
           {gettingFrom.length ? (
             gettingFrom.map(({ from, amount }) => (
               <li key={`from-${from}`}>
-                {formatUsd(amount)} from {getPersonName(from)}
+                {formatUsd(amount)} from {from}
               </li>
             ))
           ) : (
@@ -85,8 +75,7 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
           {others.length ? (
             others.map(({ to, from, amount }) => (
               <li key={`others-${to}-${from}`}>
-                {formatUsd(amount)} from {getPersonName(from)} to{' '}
-                {getPersonName(to)}
+                {formatUsd(amount)} from {from} to {to}
               </li>
             ))
           ) : (
@@ -98,16 +87,12 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
   );
 };
 
-interface ResultsRouteProps {
-  id: number;
-}
+export const ResultsRoute: FunctionalComponent = () => {
+  const { outingId } = useContext(GlobalContext);
 
-export const ResultsRoute: FunctionalComponent<ResultsRouteProps> = ({
-  id,
-}) => {
-  const { data: outing, error: outingError } = useOuting(id);
-  const { data: balance, error: balanceError } = useOutingBalance(id);
-  const { data: results, error: resultsError } = useFinishOuting(id);
+  const { data: outing, error: outingError } = useOuting(outingId);
+  const { data: balance, error: balanceError } = useOutingBalance(outingId);
+  const { data: results, error: resultsError } = useFinishOuting(outingId);
 
   const error = outingError ?? balanceError ?? resultsError;
 

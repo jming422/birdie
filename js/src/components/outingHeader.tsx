@@ -6,12 +6,14 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, h } from 'preact';
 import { route } from 'preact-router';
+import { type FunctionalComponent, h } from 'preact';
 
+import { Button, Callout, Title } from './common';
 import { formatUsd } from '../utils';
 import { type Outing, type Balance } from '../models/outing';
-import { Button, Title } from './common';
+import { useContext } from 'preact/hooks';
+import { GlobalContext } from 'src/context';
 
 export interface OutingHeaderProps {
   outing: Outing;
@@ -24,6 +26,12 @@ const OutingHeader: FunctionalComponent<OutingHeaderProps> = ({
   balance,
   showButton = false,
 }) => {
+  const { setOutingId, setUserName } = useContext(GlobalContext);
+  function exitOuting() {
+    setUserName('');
+    setOutingId('');
+  }
+
   return (
     <div>
       <Title>{outing.name}</Title>
@@ -33,12 +41,14 @@ const OutingHeader: FunctionalComponent<OutingHeaderProps> = ({
             ? 'Loading balance...'
             : `${formatUsd(balance.total)} spent on this outing so far`}
         </div>
+        <Button onClick={exitOuting}>Exit to Home</Button>
         {showButton && (
           <Button onClick={() => route(`/outings/${outing.outingId}/finish`)}>
             Finish Outing
           </Button>
         )}
       </h3>
+      <Callout>Join code: {outing.outingId}</Callout>
     </div>
   );
 };

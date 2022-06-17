@@ -8,19 +8,18 @@
  */
 import useFetch from 'use-http';
 import { type DateTime } from 'luxon';
-
-import { type Expense } from './expense';
-import { type Person } from './person';
 import { useCallback } from 'preact/hooks';
 
+import { type Expense } from './expense';
+
 export interface Outing {
-  outingId: number;
+  outingId: string;
   createdAt: DateTime;
   name: string;
 }
 
 export interface OutingDetails extends Outing {
-  people: Person[];
+  people: string[];
 }
 
 export interface Balance {
@@ -28,8 +27,8 @@ export interface Balance {
 }
 
 export interface OutingResult {
-  from: number;
-  to: number;
+  from: string;
+  to: string;
   amount: number;
 }
 
@@ -37,27 +36,37 @@ export function useOutings() {
   return useFetch<Outing[]>('/outings', []);
 }
 
-export function useFinishOuting(id: number) {
+export function useFinishOuting(id: string) {
   return useFetch<OutingResult[]>(`/outings/${id}/finish`, [id]);
 }
 
-export function useCreateOuting(personId: number) {
+export function useCreateOuting() {
   const { post } = useFetch<Outing>('/outings');
 
   return useCallback(
-    (name: string) => post({ name, person_id: personId }),
-    [personId, post]
+    (outingName: string, personName: string) =>
+      post({ name: outingName, person_name: personName }),
+    [post]
   );
 }
 
-export function useOuting(outingId: number, refresh = 0) {
+export function useJoinOuting(outingId: string) {
+  const { post } = useFetch<undefined>(`/outings/${outingId}`);
+
+  return useCallback(
+    (personName: string) => post({ name: personName }),
+    [post]
+  );
+}
+
+export function useOuting(outingId: string, refresh = 0) {
   return useFetch<OutingDetails>(`/outings/${outingId}`, [outingId, refresh]);
 }
 
-export function useOutingBalance(outingId: number) {
+export function useOutingBalance(outingId: string) {
   return useFetch<Balance>(`/outings/${outingId}/balance`, [outingId]);
 }
 
-export function useOutingExpenses(outingId: number) {
+export function useOutingExpenses(outingId: string) {
   return useFetch<Expense[]>(`/outings/${outingId}/expenses`, [outingId]);
 }

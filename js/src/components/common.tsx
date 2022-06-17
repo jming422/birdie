@@ -6,7 +6,7 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, h, JSX } from 'preact';
+import { type FunctionalComponent, type JSX, h } from 'preact';
 
 export const Title: FunctionalComponent = ({ children }) => {
   return <h1 class="text-3xl font-semibold tracking-tighter">{children}</h1>;

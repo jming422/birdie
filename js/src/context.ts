@@ -9,14 +9,16 @@
 import { createContext } from 'preact';
 import { StateUpdater } from 'preact/hooks';
 
-import { type Person, NOBODY } from './models/person';
-
-export interface UserContext {
-  user: Person;
-  setUser: StateUpdater<Person> | (() => void);
+export interface GlobalContextValue {
+  outingId: string;
+  setOutingId: StateUpdater<string> | (() => void);
+  userName: string;
+  setUserName: StateUpdater<string> | (() => void);
 }
 
-export const User = createContext<UserContext>({
-  user: NOBODY,
-  setUser: () => {}, // eslint-disable-line @typescript-eslint/no-empty-function
+export const GlobalContext = createContext<GlobalContextValue>({
+  outingId: '',
+  setOutingId: () => {}, // eslint-disable-line @typescript-eslint/no-empty-function
+  userName: '',
+  setUserName: () => {}, // eslint-disable-line @typescript-eslint/no-empty-function
 });

@@ -6,21 +6,19 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
+import camelcaseKeys from 'camelcase-keys';
 import { DateTime } from 'luxon';
-import { FunctionalComponent, h } from 'preact';
+import { type FunctionalComponent, h } from 'preact';
 import { Provider as FetchProvider, type IncomingOptions } from 'use-http';
 import { route, Route, Router } from 'preact-router';
 import { useEffect, useState } from 'preact/hooks';
-import camelcaseKeys from 'camelcase-keys';
 
-import { User } from '../context';
-import { NOBODY, type Person } from '../models/person';
+import { GlobalContext } from '../context';
 
-import Home from '../routes/home';
-import ListOutings from '../routes/outings/list';
+import JoinOuting from '../routes/outings/join';
+import NotFoundPage from '../routes/notfound';
 import Outing from '../routes/outings/details';
 import OutingResults from '../routes/outings/results';
-import NotFoundPage from '../routes/notfound';
 
 const fetchOpts: IncomingOptions = {
   interceptors: {
@@ -42,42 +40,48 @@ const fetchOpts: IncomingOptions = {
 };
 
 const App: FunctionalComponent = () => {
-  const [user, setUser] = useState(NOBODY);
+  const [outingId, setOutingId] = useState('');
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    if (user.personId === -1) {
-      const userStorage = window.sessionStorage.getItem('user');
-      let maybeUser: Person | undefined;
-      if (userStorage) {
-        try {
-          maybeUser = JSON.parse(userStorage) as Person;
-        } catch (_e) {
-          // noop
-        }
-      }
-
-      if (maybeUser?.personId && maybeUser.personId >= 0) {
-        setUser(maybeUser);
-      } else {
-        route('/');
-      }
-    } else {
-      window.sessionStorage.setItem('user', JSON.stringify(user));
+    if (outingId) {
+      window.sessionStorage.setItem('outingId', outingId);
+      route(`/outings/${outingId}`);
+      return;
     }
-  }, [user]);
+
+    const maybeOutingId = window.sessionStorage.getItem('outingId');
+    if (maybeOutingId && /^[A-Z0-9]+$/.test(maybeOutingId)) {
+      setOutingId(maybeOutingId);
+      route(`/outings/${outingId}`);
+    } else {
+      route(`/`);
+    }
+  }, [outingId]);
+
+  useEffect(() => {
+    if (userName) {
+      window.sessionStorage.setItem('userName', userName);
+      return;
+    }
+
+    const maybeUserName = window.sessionStorage.getItem('userName');
+    if (maybeUserName) setUserName(maybeUserName);
+  }, [userName]);
 
   return (
     <div id="preact_root" class="bg-teal-100 text-slate-800">
       <FetchProvider url="/api" options={fetchOpts}>
-        <User.Provider value={{ user, setUser }}>
+        <GlobalContext.Provider
+          value={{ outingId, setOutingId, userName, setUserName }}
+        >
           <Router>
-            <Route path="/" component={Home} />
-            <Route path="/outings" component={ListOutings} />
-            <Route path="/outings/:id" component={Outing} />
-            <Route path="/outings/:id/finish" component={OutingResults} />
+            <Route path="/" component={JoinOuting} />
+            <Route path="/details" component={Outing} />
+            <Route path="/finish" component={OutingResults} />
             <NotFoundPage default />
           </Router>
-        </User.Provider>
+        </GlobalContext.Provider>
       </FetchProvider>
     </div>
   );

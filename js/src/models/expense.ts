@@ -6,30 +6,30 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
+import useFetch from 'use-http';
 import { type DateTime } from 'luxon';
 import { useCallback } from 'preact/hooks';
-import useFetch from 'use-http';
 
 export interface Expense {
   expenseId: number;
   createdAt: DateTime;
-  outingId: number;
-  personId: number;
+  outingId: string;
+  personName: string;
   amount: number;
   description?: string;
 }
 
-export function useCreateExpense(personId: number, outingId: number) {
+export function useCreateExpense(personName: string, outingId: string) {
   const { post } = useFetch<Expense>('/expenses');
 
   return useCallback(
     (amount: number, description?: string) =>
       post({
         outing_id: outingId,
-        person_id: personId,
+        person_name: personName,
         amount,
         description,
       }),
-    [personId, outingId, post]
+    [personName, outingId, post]
   );
 }

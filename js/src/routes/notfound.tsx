@@ -6,7 +6,7 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import { FunctionalComponent, h } from 'preact';
+import { type FunctionalComponent, h } from 'preact';
 import { Link } from 'preact-router/match';
 
 const NotFound: FunctionalComponent = () => {
