@@ -12,12 +12,22 @@ use std::net::SocketAddr;
 
 use axum::Server;
 use sqlx::postgres::PgPoolOptions;
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use birdie::{app, migrate};
 
 #[tokio::main]
 async fn main() {
-    println!("to Connecting Postgres");
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "birdie=debug,tower_http=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    info!("Connecting to Postgres");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect("postgres://localhost/birdie")
@@ -31,7 +41,7 @@ async fn main() {
     let router = app(pool, "./js/build").await.unwrap();
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
-    println!("Listening on {}", addr);
+    info!("Listening on {}", addr);
     Server::bind(&addr)
         .serve(router.into_make_service())
         .await

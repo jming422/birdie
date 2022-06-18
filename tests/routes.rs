@@ -22,14 +22,12 @@ use tower::ServiceExt; // for `app.oneshot()`
 
 async fn setup_test_db(schema_suffix: &str) -> PgPool {
     // Modeled after example in https://docs.rs/sqlx/latest/sqlx/pool/struct.PoolOptions.html#method.after_connect
-    println!("Connecting");
     // This makes all queries in tests hit their own `testing` schema
     let why_rust_whyyy = format!("SET search_path TO testing_{};", schema_suffix);
     let pool = PgPoolOptions::new()
         .after_connect(move |conn| {
             let why_rust_whyyy = why_rust_whyyy.clone();
             Box::pin(async move {
-                println!("Setting search path");
                 conn.execute(why_rust_whyyy.as_str()).await?;
                 Ok(())
             })
@@ -38,20 +36,17 @@ async fn setup_test_db(schema_suffix: &str) -> PgPool {
         .await
         .unwrap();
 
-    println!("Dropping testing schema");
     // And dropping/recreating clears the schema before each test run
     pool.execute(format!("DROP SCHEMA IF EXISTS testing_{} CASCADE;", schema_suffix).as_str())
         .await
         .unwrap();
-    println!("Creating testing schema");
+
     pool.execute(format!("CREATE SCHEMA testing_{};", schema_suffix).as_str())
         .await
         .unwrap();
 
-    println!("Migrating");
     birdie::migrate(&pool).await.unwrap();
 
-    println!("Done");
     pool
 }
 
@@ -160,7 +155,7 @@ async fn outings() {
 
     let dec_outing_id = birdie::models::HARSH
         .decode(&outing_id)
-        .expect(format!("outing_id wasn't a valid hashid, it was {}", &outing_id).as_str())
+        .unwrap_or_else(|_| panic!("outing_id wasn't a valid hashid, it was {}", &outing_id))
         .pop()
         .unwrap();
 

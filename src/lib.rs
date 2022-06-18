@@ -38,7 +38,11 @@ use sync_wrapper::SyncWrapper;
 use tokio_stream::StreamExt;
 use tokio_tar::Archive;
 use tokio_util::io::StreamReader;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::TraceLayer,
+};
+use tracing::{error, info};
 
 pub mod models;
 use models::*;
@@ -243,7 +247,7 @@ async fn finish_outing(
 
         if people_debts.is_empty() {
             if most_indebted.diff_from_avg > Decimal::new(1, 2) {
-                eprintln!(
+                error!(
                     "Somebody was left over with an oustanding balance greater than 1 cent, telling them to... pay themselves lol: {:?}",
                     most_indebted
                 );
@@ -273,13 +277,13 @@ async fn finish_outing(
 }
 
 pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
-    println!("Updating database schema");
+    info!("Updating database schema");
     pool.execute(include_str!("../schema.sql")).await?;
     Ok(())
 }
 
 pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_service::Error> {
-    println!("Building router");
+    info!("Building router");
     let outing_routes = Router::new()
         .route("/", get(list_outings).post(create_outing))
         .route("/:id", get(retrieve_outing))
@@ -306,17 +310,18 @@ pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_ser
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
             }),
         )
-        .layer(Extension(pool));
+        .layer(Extension(pool))
+        .layer(TraceLayer::new_for_http());
 
     Ok(router)
 }
 
 pub async fn unpack_frontend(pool: &PgPool) -> Result<(), shuttle_service::Error> {
-    println!("Downloading frontend bundle from S3");
+    info!("Downloading frontend bundle from S3");
     let bucket = pool.get_secret("DEPLOY_BUCKET").await?;
     let s3_result = s3::download_object(pool, bucket, "birdie-js.tar.gz").await?;
 
-    println!("Unpacking frontend bundle");
+    info!("Unpacking frontend bundle");
     let gz = StreamReader::new(
         s3_result
             .body

@@ -46,14 +46,14 @@ const App: FunctionalComponent = () => {
   useEffect(() => {
     if (outingId) {
       window.sessionStorage.setItem('outingId', outingId);
-      route(`/outings/${outingId}`);
+      route(`/details`);
       return;
     }
 
     const maybeOutingId = window.sessionStorage.getItem('outingId');
     if (maybeOutingId && /^[A-Z0-9]+$/.test(maybeOutingId)) {
       setOutingId(maybeOutingId);
-      route(`/outings/${outingId}`);
+      route(`/details`);
     } else {
       route(`/`);
     }

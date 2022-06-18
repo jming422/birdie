@@ -8,12 +8,12 @@
  */
 import { route } from 'preact-router';
 import { type FunctionalComponent, h } from 'preact';
+import { useContext } from 'preact/hooks';
 
 import { Button, Callout, Title } from './common';
+import { GlobalContext } from '../context';
 import { formatUsd } from '../utils';
 import { type Outing, type Balance } from '../models/outing';
-import { useContext } from 'preact/hooks';
-import { GlobalContext } from 'src/context';
 
 export interface OutingHeaderProps {
   outing: Outing;
@@ -43,9 +43,7 @@ const OutingHeader: FunctionalComponent<OutingHeaderProps> = ({
         </div>
         <Button onClick={exitOuting}>Exit to Home</Button>
         {showButton && (
-          <Button onClick={() => route(`/outings/${outing.outingId}/finish`)}>
-            Finish Outing
-          </Button>
+          <Button onClick={() => route(`/finish`)}>Finish Outing</Button>
         )}
       </h3>
       <Callout>Join code: {outing.outingId}</Callout>
