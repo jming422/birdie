@@ -7,10 +7,10 @@
  * src/lib.rs as well as the LICENSE file.
  */
 import { route } from 'preact-router';
-import { type FunctionalComponent, h } from 'preact';
+import { type FunctionalComponent, h, Fragment } from 'preact';
 import { useContext } from 'preact/hooks';
 
-import { Button, Callout, Title } from './common';
+import { Button, Title } from './common';
 import { GlobalContext } from '../context';
 import { formatUsd } from '../utils';
 import { type Outing, type Balance } from '../models/outing';
@@ -18,35 +18,54 @@ import { type Outing, type Balance } from '../models/outing';
 export interface OutingHeaderProps {
   outing: Outing;
   balance?: Balance;
-  showButton?: boolean;
+  showFinish?: boolean;
+  showBack?: boolean;
 }
 
 const OutingHeader: FunctionalComponent<OutingHeaderProps> = ({
   outing,
   balance,
-  showButton = false,
+  showFinish = false,
+  showBack = false,
 }) => {
-  const { setOutingId, setUserName } = useContext(GlobalContext);
+  const { setOutingId } = useContext(GlobalContext);
   function exitOuting() {
-    setUserName('');
     setOutingId('');
   }
 
   return (
     <div>
-      <Title>{outing.name}</Title>
-      <h3 class="flex flex-row justify-between align-center py-2">
-        <div class="text-xl">
-          {!balance
-            ? 'Loading balance...'
-            : `${formatUsd(balance.total)} spent on this outing so far`}
+      <div class="flex flex-row justify-between">
+        <Title>{outing.name}</Title>
+        <Title>Join code: {outing.outingId}</Title>
+      </div>
+      <h3 class="flex flex-row justify-between py-4">
+        <div class="flex flex-col justify-center">
+          <p class="text-xl leading-none">
+            {!balance ? (
+              'Loading balance...'
+            ) : (
+              <>
+                <span class="font-semibold">{formatUsd(balance.total)}</span>{' '}
+                spent by everyone so far
+              </>
+            )}
+          </p>
         </div>
-        <Button onClick={exitOuting}>Exit to Home</Button>
-        {showButton && (
-          <Button onClick={() => route(`/finish`)}>Finish Outing</Button>
-        )}
+        <div>
+          {showBack && (
+            <Button onClick={() => history.back()} class="mr-4">
+              Go Back
+            </Button>
+          )}
+          {showFinish && (
+            <Button onClick={() => route(`/finish`)} class="mr-4">
+              Finish Outing
+            </Button>
+          )}
+          <Button onClick={exitOuting}>Exit to Home</Button>
+        </div>
       </h3>
-      <Callout>Join code: {outing.outingId}</Callout>
     </div>
   );
 };

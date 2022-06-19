@@ -6,8 +6,9 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
+import { route } from 'preact-router';
 import { type FunctionalComponent, h } from 'preact';
-import { useContext } from 'preact/hooks';
+import { useContext, useEffect } from 'preact/hooks';
 
 import {
   Balance,
@@ -43,7 +44,7 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
 
   return (
     <div>
-      <OutingHeader {...{ outing, balance }} />
+      <OutingHeader {...{ outing, balance }} showBack />
       <div class="text-lg mt-2">
         <Subtitle>You owe:</Subtitle>
         <ul class="pt-1 pb-4 pl-4">
@@ -70,7 +71,7 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
           )}
         </ul>
 
-        <Subtitle>Other peoples&apos; stuff</Subtitle>
+        <Subtitle>Other peoples&apos; stuff:</Subtitle>
         <ul class="pt-1 pb-4 pl-4">
           {others.length ? (
             others.map(({ to, from, amount }) => (
@@ -89,6 +90,10 @@ const ResultsPage = ({ outing, balance, results }: ResultsPageProps) => {
 
 export const ResultsRoute: FunctionalComponent = () => {
   const { outingId } = useContext(GlobalContext);
+
+  useEffect(() => {
+    if (!outingId) route('/');
+  }, [outingId]);
 
   const { data: outing, error: outingError } = useOuting(outingId);
   const { data: balance, error: balanceError } = useOutingBalance(outingId);

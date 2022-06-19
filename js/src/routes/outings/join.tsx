@@ -7,17 +7,33 @@
  * src/lib.rs as well as the LICENSE file.
  */
 import { type FunctionalComponent, h } from 'preact';
-import { type StateUpdater, useContext, useState } from 'preact/hooks';
+import {
+  type StateUpdater,
+  useContext,
+  useState,
+  useEffect,
+} from 'preact/hooks';
 
-import { Button, Callout, Container } from '../../components/common';
+import {
+  Button,
+  Container,
+  Title,
+  Subtitle,
+  Input,
+} from '../../components/common';
 import { GlobalContext } from '../../context';
 import { useCreateOuting, useJoinOuting } from '../../models/outing';
 
 export const JoinOuting: FunctionalComponent = () => {
-  const { setOutingId, setUserName } = useContext(GlobalContext);
+  const { setOutingId, userName, setUserName } = useContext(GlobalContext);
 
   // First we ask for name
-  const [personName, setPersonName] = useState('');
+  const [personName, setPersonName] = useState(userName);
+  // There's a blink where userName is blank before it gets loaded from
+  // sessionStorage (if it is there in sessionStorage). Catch that second render!
+  useEffect(() => {
+    if (userName) setPersonName(userName);
+  }, [userName]);
 
   // Then they can either join
   const [joinCode, setJoinCode] = useState('');
@@ -54,29 +70,30 @@ export const JoinOuting: FunctionalComponent = () => {
 
   return (
     <Container>
-      <div>
-        <Callout>Hi there, what&apos;s your name?</Callout>
-        <div class="flex flex-row flex-1">
-          <input onInput={handleInput(setPersonName)} class="mr-2" />
-        </div>
+      <Title>Hi there! </Title>
+      <div class="my-4 w-full">
+        <Subtitle>What&apos;s your name?</Subtitle>
+        <Input
+          value={personName}
+          onInput={handleInput(setPersonName)}
+          class="mt-2 w-2/5"
+        />
       </div>
 
-      <div>
-        <Callout>
-          You can join someone else&apos;s outing by entering their join code:
-        </Callout>
-        <div class="flex flex-row flex-1">
-          <input onInput={handleInput(setJoinCode)} class="mr-2" />
-          <Button onClick={joinOutingAndRoute}>Join</Button>
-        </div>
+      <div class="my-4 w-full">
+        <Subtitle>Join an outing by entering a join code:</Subtitle>
+        <Input onInput={handleInput(setJoinCode)} class="mt-2 w-2/5" />
+        <Button onClick={joinOutingAndRoute} class="block mt-2">
+          Join!
+        </Button>
       </div>
 
-      <div>
-        <Callout>Or start a new outing! Just give it a name:</Callout>
-        <div class="flex flex-row flex-1">
-          <input onInput={handleInput(setOutingName)} class="mr-2" />
-          <Button onClick={createOutingAndRoute}>Add</Button>
-        </div>
+      <div class="my-4 w-full">
+        <Subtitle>Or start a new outing! Just give it a name:</Subtitle>
+        <Input onInput={handleInput(setOutingName)} class="mt-2 w-2/5" />
+        <Button onClick={createOutingAndRoute} class="block mt-2">
+          Create!
+        </Button>
       </div>
     </Container>
   );

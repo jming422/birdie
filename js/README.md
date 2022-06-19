@@ -5,7 +5,7 @@
 - fg: `slate-800`
 - bg: `teal-100`
 - bg-alt: `teal-200`
-- pri: `bg-cyan-400`
+- pri: `bg-cyan-500`
 
 ## CLI Commands
 

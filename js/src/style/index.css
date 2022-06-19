@@ -7,6 +7,15 @@
  * src/lib.rs as well as the LICENSE file.
  */
 @tailwind base;
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    @apply rounded-lg;
+  }
+}
+
 @tailwind components;
 @tailwind utilities;
 

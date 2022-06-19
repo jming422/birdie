@@ -6,11 +6,12 @@
  * For information about warranty and licensing, see the disclaimer in
  * src/lib.rs as well as the LICENSE file.
  */
-import useFetch from 'use-http';
+import useFetch, { IncomingOptions } from 'use-http';
 import { type DateTime } from 'luxon';
 import { useCallback } from 'preact/hooks';
 
 import { type Expense } from './expense';
+import { useBlankSafeFetch } from '../utils';
 
 export interface Outing {
   outingId: string;
@@ -37,7 +38,7 @@ export function useOutings() {
 }
 
 export function useFinishOuting(id: string) {
-  return useFetch<OutingResult[]>(`/outings/${id}/finish`, [id]);
+  return useBlankSafeFetch<OutingResult[]>(`/outings/${id}/finish`, [id]);
 }
 
 export function useCreateOuting() {
@@ -51,22 +52,31 @@ export function useCreateOuting() {
 }
 
 export function useJoinOuting(outingId: string) {
-  const { post } = useFetch<undefined>(`/outings/${outingId}`);
+  const { put } = useFetch<undefined>(`/outings/${outingId}/join`);
 
-  return useCallback(
-    (personName: string) => post({ name: personName }),
-    [post]
-  );
+  return useCallback((personName: string) => put({ name: personName }), [put]);
 }
 
 export function useOuting(outingId: string, refresh = 0) {
-  return useFetch<OutingDetails>(`/outings/${outingId}`, [outingId, refresh]);
+  return useBlankSafeFetch<OutingDetails>(
+    `/outings/${outingId}`,
+    { cachePolicy: 'no-cache' } as IncomingOptions,
+    [outingId, refresh]
+  );
 }
 
-export function useOutingBalance(outingId: string) {
-  return useFetch<Balance>(`/outings/${outingId}/balance`, [outingId]);
+export function useOutingBalance(outingId: string, refresh = 0) {
+  return useBlankSafeFetch<Balance>(
+    `/outings/${outingId}/balance`,
+    { cachePolicy: 'no-cache' } as IncomingOptions,
+    [outingId, refresh]
+  );
 }
 
-export function useOutingExpenses(outingId: string) {
-  return useFetch<Expense[]>(`/outings/${outingId}/expenses`, [outingId]);
+export function useOutingExpenses(outingId: string, refresh = 0) {
+  return useBlankSafeFetch<Expense[]>(
+    `/outings/${outingId}/expenses`,
+    { cachePolicy: 'no-cache' } as IncomingOptions,
+    [outingId, refresh]
+  );
 }

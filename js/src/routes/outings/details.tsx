@@ -7,11 +7,18 @@
  * src/lib.rs as well as the LICENSE file.
  */
 import { DateTime } from 'luxon';
+import { route } from 'preact-router';
 import { type FunctionalComponent, Fragment, h } from 'preact';
-import { useContext, useState } from 'preact/hooks';
+import { useCallback, useContext, useEffect, useState } from 'preact/hooks';
 
 import OutingHeader from '../../components/outingHeader';
-import { Callout, Container, Label, Button } from '../../components/common';
+import {
+  Callout,
+  Container,
+  Label,
+  Button,
+  Input,
+} from '../../components/common';
 import { GlobalContext } from '../../context';
 import { formatUsd } from '../../utils';
 import { useCreateExpense, type Expense } from '../../models/expense';
@@ -24,10 +31,10 @@ import {
 } from '../../models/outing';
 
 interface CreateExpenseProps {
-  refresh: () => void;
+  refreshExpenses: () => void;
 }
 
-const CreateExpense = ({ refresh }: CreateExpenseProps) => {
+const CreateExpense = ({ refreshExpenses }: CreateExpenseProps) => {
   const { outingId, userName } = useContext(GlobalContext);
 
   const createExpense = useCreateExpense(userName, outingId);
@@ -39,7 +46,7 @@ const CreateExpense = ({ refresh }: CreateExpenseProps) => {
     if (amount) {
       const trimmedDesc = description.replace(/\s+/g, ' ').trim();
       await createExpense(amount, trimmedDesc || undefined);
-      refresh();
+      refreshExpenses();
     }
   }
 
@@ -57,17 +64,21 @@ const CreateExpense = ({ refresh }: CreateExpenseProps) => {
   }
 
   return (
-    <div class="my-2">
+    <div class="mb-8">
       <Callout>Add a new expense:</Callout>
-      <div class="mb-2">
-        <Label>Amount:</Label>
-        <input onInput={handleAmountInput} />
+      <div class="mx-auto grid grid-cols-2 gap-x-2 gap-y-4 place-content-center max-w-sm text-right">
+        <Label class="leading-none flex flex-col justify-center content-center">
+          Description (optional):
+        </Label>
+        <Input onInput={handleDescInput} />
+        <Label class="leading-none flex flex-col justify-center content-center">
+          Amount:
+        </Label>
+        <Input onInput={handleAmountInput} pattern="\d*\.?\d+" />
       </div>
-      <div class="mb-2">
-        <Label>Description (optional): </Label>
-        <input onInput={handleDescInput} />
+      <div class="flex justify-center content-center pt-4">
+        <Button onClick={createExpenseAndRefresh}>Add</Button>
       </div>
-      <Button onClick={createExpenseAndRefresh}>Add</Button>
     </div>
   );
 };
@@ -76,37 +87,40 @@ interface OutingPageProps {
   outing: OutingDetails;
   balance?: Balance;
   expenses?: Expense[];
-  refresh: () => void;
+  refreshExpenses: () => void;
 }
 
 const OutingPage = ({
   outing,
   balance,
   expenses,
-  refresh,
+  refreshExpenses,
 }: OutingPageProps) => {
   return (
     <div>
-      <OutingHeader {...{ outing, balance }} showButton />
-      <CreateExpense {...{ refresh }} />
-      <div class="pt-2">
-        {/* TODO this spacing & divider thing is not working */}
-        <div class="width-full height-100 bg-cyan-400" />
-        <ul class="mt-2">
-          {expenses?.map(({ expenseId, amount, createdAt, description }) => (
-            <li key={expenseId} class="mb-1">
-              <span class="font-semibold">{formatUsd(amount)}</span>
-              {/* TODO italic is not working */}
-              <span class="font-italic"> on </span>
-              {createdAt.toLocaleString(DateTime.DATETIME_FULL)}
-              {description && (
-                <>
-                  <span class="font-italic"> for </span>
-                  <span class="font-semibold">{description}</span>
-                </>
-              )}
-            </li>
-          ))}
+      <OutingHeader {...{ outing, balance }} showFinish />
+      <div class="divide-y-8 divide-cyan-300 divide-double">
+        <CreateExpense {...{ refreshExpenses }} />
+        <ul class="pt-4 max-w-prose">
+          {expenses?.map(
+            ({ expenseId, amount, createdAt, personName, description }) => (
+              <li key={expenseId} class="mb-1">
+                <span class="font-semibold">{formatUsd(amount)}</span>
+                <span> by </span>
+                <span class="font-semibold">{personName}</span>
+                <span> @ </span>
+                <span class="italic">
+                  {createdAt.toLocaleString(DateTime.DATETIME_FULL)}
+                </span>
+                {description && (
+                  <>
+                    <span> for </span>
+                    <span class="font-semibold">{description}</span>
+                  </>
+                )}
+              </li>
+            )
+          )}
         </ul>
       </div>
     </div>
@@ -116,10 +130,22 @@ const OutingPage = ({
 export const OutingRoute: FunctionalComponent = () => {
   const { outingId } = useContext(GlobalContext);
 
-  const [refOut, refreshOuting] = useState(0);
-  const { data: outing, error: outingError } = useOuting(outingId, refOut);
-  const { data: balance, error: balanceError } = useOutingBalance(outingId);
-  const { data: expenses, error: expensesError } = useOutingExpenses(outingId);
+  useEffect(() => {
+    if (!outingId) route('/');
+  }, [outingId]);
+
+  const [refresh, setRefresh] = useState(0);
+  const { data: outing, error: outingError } = useOuting(outingId);
+  const { data: balance, error: balanceError } = useOutingBalance(
+    outingId,
+    refresh
+  );
+  const { data: expenses, error: expensesError } = useOutingExpenses(
+    outingId,
+    refresh
+  );
+
+  const incrRefresh = useCallback(() => setRefresh((x) => x + 1), []);
 
   const error = outingError ?? balanceError ?? expensesError;
 
@@ -132,7 +158,7 @@ export const OutingRoute: FunctionalComponent = () => {
       ) : (
         <OutingPage
           {...{ outing, balance, expenses }}
-          refresh={() => refreshOuting((x) => x + 1)}
+          refreshExpenses={incrRefresh}
         />
       )}
     </Container>

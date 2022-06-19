@@ -40,37 +40,39 @@ const fetchOpts: IncomingOptions = {
 };
 
 const App: FunctionalComponent = () => {
-  const [outingId, setOutingId] = useState('');
-  const [userName, setUserName] = useState('');
+  const [outingId, setOutingIdState] = useState('');
+  const [userName, setUserNameState] = useState('');
 
+  const setOutingId = (newVal: string) => {
+    window.sessionStorage.setItem('outingId', newVal);
+    setOutingIdState(newVal);
+  };
+
+  const setUserName = (newVal: string) => {
+    window.sessionStorage.setItem('userName', newVal);
+    setUserNameState(newVal);
+  };
+
+  // Initialize state to session storage values on first render
   useEffect(() => {
-    if (outingId) {
-      window.sessionStorage.setItem('outingId', outingId);
-      route(`/details`);
-      return;
-    }
+    const maybeUserName = window.sessionStorage.getItem('userName');
+    if (maybeUserName) setUserName(maybeUserName);
 
     const maybeOutingId = window.sessionStorage.getItem('outingId');
     if (maybeOutingId && /^[A-Z0-9]+$/.test(maybeOutingId)) {
       setOutingId(maybeOutingId);
-      route(`/details`);
-    } else {
-      route(`/`);
     }
+  }, []);
+
+  // Every time the outing changes (most importantly when it goes between blank
+  // & nonblank), route to the outing details page if it is nonblank
+  useEffect(() => {
+    if (outingId) route(`/details`);
+    else route(`/`);
   }, [outingId]);
 
-  useEffect(() => {
-    if (userName) {
-      window.sessionStorage.setItem('userName', userName);
-      return;
-    }
-
-    const maybeUserName = window.sessionStorage.getItem('userName');
-    if (maybeUserName) setUserName(maybeUserName);
-  }, [userName]);
-
   return (
-    <div id="preact_root" class="bg-teal-100 text-slate-800">
+    <div id="preact_root" class="bg-teal-100 text-slate-800 p-2">
       <FetchProvider url="/api" options={fetchOpts}>
         <GlobalContext.Provider
           value={{ outingId, setOutingId, userName, setUserName }}

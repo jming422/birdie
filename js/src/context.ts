@@ -7,13 +7,12 @@
  * src/lib.rs as well as the LICENSE file.
  */
 import { createContext } from 'preact';
-import { StateUpdater } from 'preact/hooks';
 
 export interface GlobalContextValue {
   outingId: string;
-  setOutingId: StateUpdater<string> | (() => void);
+  setOutingId: ((newVal: string) => void) | (() => void);
   userName: string;
-  setUserName: StateUpdater<string> | (() => void);
+  setUserName: ((newVal: string) => void) | (() => void);
 }
 
 export const GlobalContext = createContext<GlobalContextValue>({
