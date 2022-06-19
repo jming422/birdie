@@ -8,7 +8,7 @@ repository = "https://github.com/jming422/birdie.git"
 include = ["/src", "/*", "!.*", "!/js", "!/js.tar.gz", "!/frontend"]
 
 [lib]
-crate-type = ["lib"] # ["cdylib"]
+crate-type = ["cdylib"] # ["lib"]
 
 [dependencies]
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
