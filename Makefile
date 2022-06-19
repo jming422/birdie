@@ -14,7 +14,7 @@ js/package-lock.json: js/package.json
 	cd js && npm install
 
 deploy: deploy-s3
-	cargo shuttle deploy --allow-dirty
+	cargo shuttle deploy
 
 deploy-s3: js.tar.gz
 	aws s3 cp js.tar.gz s3://jming422-deploy/birdie-js.tar.gz
