@@ -1,6 +1,6 @@
 # birdie
 
-An excuse to experiment with deploying a Rust webapp using shuttle.rs
+An excuse to experiment with deploying a Rust + TypeScript webapp using shuttle.rs
 
 Easily balances group outing expenses among friends, so that everybody gets to make the fewest money transfers as possible among one another, just at the end of the outing.
 
