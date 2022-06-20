@@ -215,7 +215,7 @@ async fn finish_outing(
     let mut people_debts: VecDeque<PersonDiff> = VecDeque::from(
         sqlx::query_as(
             "WITH expenses_per_person AS ( \
-               SELECT op.name, SUM(ex.amount) AS amount_paid \
+               SELECT op.name, COALESCE(SUM(ex.amount), 0) AS amount_paid \
                FROM outing_people AS op \
                LEFT JOIN expenses AS ex ON (op.outing_id = ex.outing_id AND op.name = ex.person_name) \
                WHERE op.outing_id = $1 \
