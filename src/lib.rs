@@ -316,29 +316,36 @@ pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_ser
     Ok(router)
 }
 
-pub async fn unpack_frontend(pool: &PgPool) -> Result<(), shuttle_service::Error> {
+pub async fn unpack_frontend(pool: &PgPool, build_dir: &str) -> Result<(), shuttle_service::Error> {
     info!("Downloading frontend bundle from S3");
     let bucket = pool.get_secret("DEPLOY_BUCKET").await?;
     let s3_result = s3::download_object(pool, bucket, "birdie-js.tar.gz").await?;
 
     info!("Unpacking frontend bundle");
     let gz = StreamReader::new(
-        s3_result
-            .body
-            // StreamReader requires that the Item's Result Error type is an
-            // io::Error, not just any error (like an AWS SdkError), so we have
-            // to wrap any SdkErrors in io::Errors.
-            .map(|item| item.map_err(|e| io::Error::new(io::ErrorKind::Other, e))),
+        // StreamReader requires that the Item's Result Error type is an
+        // io::Error, not just any error (like an AWS SdkError), so we have
+        // to wrap any SdkErrors in io::Errors.
+        StreamExt::map(s3_result.body, |item| {
+            item.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        }),
     );
     let tar = GzipDecoder::new(gz);
     let mut archive = Archive::new(tar);
-    archive.unpack("./frontend").await?;
+    archive.unpack(build_dir).await?;
     Ok(())
 }
 
 #[shuttle_service::main]
-async fn axum(pool: PgPool) -> ShuttleAxum {
-    unpack_frontend(&pool).await?;
+async fn axum(#[shared::Postgres] pool: PgPool) -> ShuttleAxum {
+    let frontend_dir = if std::env::var("BIRDIE_LOCAL").is_err() {
+        let dir = "./frontend";
+        unpack_frontend(&pool, dir).await?;
+        dir
+    } else {
+        "./js/build"
+    };
+
     migrate(&pool).await.map_err(CustomError::new)?;
-    Ok(SyncWrapper::new(app(pool, "./frontend").await?))
+    Ok(SyncWrapper::new(app(pool, frontend_dir).await?))
 }

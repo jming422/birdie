@@ -1,6 +1,6 @@
 [package]
 name = "birdie"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
 license = "GPL-3.0-or-later"
@@ -8,12 +8,11 @@ repository = "https://github.com/jming422/birdie.git"
 include = ["/src", "/*", "!.*", "!/js", "!/js.tar.gz", "!/frontend"]
 
 [lib]
-crate-type = ["cdylib", "lib"]
 
 [dependencies]
 async-compression = { version = "0.3", features = ["tokio", "gzip"] }
-aws-config = "0.12"
-aws-sdk-s3 = "0.12"
+aws-config = "0.46"
+aws-sdk-s3 = "0.16"
 axum = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
 harsh = "0.2"
@@ -21,7 +20,7 @@ lazy_static = "1"
 rust_decimal = { version = "1", features = ["serde-with-float", "serde-with-arbitrary-precision"] }
 serde = "1"
 serde_json = "1"
-shuttle-service = { version = "0.3.3", features = ["secrets", "sqlx-postgres", "web-axum"] }
+shuttle-service = { version = "0.4.0", features = ["secrets", "sqlx-postgres", "web-axum"] }
 sqlx = { version = "0.5", features = ["runtime-tokio-native-tls", "postgres", "decimal", "chrono"] }
 sync_wrapper = "0.1"
 tokio = { version = "1", features = ["full"] }
