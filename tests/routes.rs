@@ -8,6 +8,8 @@
  */
 #![warn(clippy::all)]
 
+use std::time::Duration;
+
 use axum::{
     body::{Body, Bytes},
     http,
@@ -32,6 +34,7 @@ async fn setup_test_db(schema_suffix: &str) -> PgPool {
                 Ok(())
             })
         })
+        .connect_timeout(Duration::from_secs(10))
         .connect("postgres://localhost/birdie")
         .await
         .unwrap();
