@@ -1,4 +1,11 @@
-# birdie
+# birdie [![GitHub license]][license] [![GitHub latest release]][releases] [![deployed with shuttle]][shuttle]
+
+[github license]: https://img.shields.io/github/license/jming422/birdie
+[license]: https://github.com/jming422/birdie/blob/main/LICENSE
+[github latest release]: https://img.shields.io/github/v/release/jming422/birdie
+[releases]: https://github.com/jming422/birdie/releases
+[deployed with shuttle]: https://img.shields.io/badge/shuttle.rs-%F0%9F%9A%80-orange
+[shuttle]: https://shuttle.rs
 
 An excuse to experiment with deploying a Rust + TypeScript webapp using shuttle.rs
 
