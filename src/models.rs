@@ -79,7 +79,7 @@ impl TryFrom<i32> for OutingId {
 impl TryFrom<String> for OutingId {
     type Error = IdParseError;
     fn try_from(s: String) -> Result<OutingId, IdParseError> {
-        let res = HARSH.decode(s)?;
+        let res = HARSH.decode(s.trim().to_uppercase())?;
         if res.len() != 1 || res[0] > i32::MAX as u64 {
             Err(IdParseError::User("Invalid outing ID provided"))
         } else {
