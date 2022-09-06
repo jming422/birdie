@@ -27,14 +27,14 @@ async fn setup_test_db(schema_suffix: &str) -> PgPool {
     // This makes all queries in tests hit their own `testing` schema
     let why_rust_whyyy = format!("SET search_path TO testing_{};", schema_suffix);
     let pool = PgPoolOptions::new()
-        .after_connect(move |conn| {
+        .after_connect(move |conn, _meta| {
             let why_rust_whyyy = why_rust_whyyy.clone();
             Box::pin(async move {
                 conn.execute(why_rust_whyyy.as_str()).await?;
                 Ok(())
             })
         })
-        .connect_timeout(Duration::from_secs(10))
+        .acquire_timeout(Duration::from_secs(10))
         .connect("postgres://localhost/birdie")
         .await
         .unwrap();
