@@ -1,11 +1,13 @@
 [package]
 name = "birdie"
-version = "0.2.0-alpha"
+version = "0.1.4"
 edition = "2021"
 description = "Split group expenses using the minimal number of transactions"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/jming422/birdie.git"
-exclude = ["/js", "/screenshots"]
+include = ["/*.{toml,sql}", "/src/**/*.rs"]
+# don't include /tests, they require a DB right now and I haven't gotten around
+# to making them work when Shuttle runs them
 
 [lib]
 
@@ -20,7 +22,9 @@ lazy_static = "1"
 rust_decimal = { version = "1", features = ["serde-with-float", "serde-with-arbitrary-precision"] }
 serde = "1"
 serde_json = "1"
-shuttle-service = { version = "0.5.1", features = ["secrets", "sqlx-postgres", "web-axum"] }
+shuttle-secrets = "0.7.2"
+shuttle-service = { version = "0.7.2", features = ["web-axum"] }
+shuttle-shared-db = { version = "0.7.2", features = ["postgres"] }
 sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "decimal", "chrono"] }
 sync_wrapper = "0.1"
 tokio = { version = "1", features = ["full"] }

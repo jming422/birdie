@@ -107,7 +107,7 @@ pub struct Outing {
     pub name: String,
 }
 
-#[derive(Deserialize, Serialize, FromRow, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, FromRow, PartialEq, Eq, Debug)]
 pub struct Named {
     pub name: String,
 }

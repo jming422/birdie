@@ -32,7 +32,8 @@ use axum::{
     routing::{get, get_service, post, put},
     Extension, Json, Router,
 };
-use shuttle_service::{error::CustomError, SecretStore, ShuttleAxum};
+use shuttle_secrets::SecretStore;
+use shuttle_service::{error::CustomError, ShuttleAxum};
 use sqlx::{types::Decimal, Executor, PgPool};
 use sync_wrapper::SyncWrapper;
 use tokio_stream::StreamExt;
@@ -179,7 +180,7 @@ async fn create_expense(
     )
     .bind(&payload.outing_id)
     .bind(&payload.person_name)
-    .bind(&payload.amount)
+    .bind(payload.amount)
     .bind(&payload.description)
     .fetch_one(&pool)
     .await
@@ -316,10 +317,15 @@ pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_ser
     Ok(router)
 }
 
-pub async fn unpack_frontend(pool: &PgPool, build_dir: &str) -> Result<(), shuttle_service::Error> {
+pub async fn unpack_frontend(
+    secret_store: SecretStore,
+    build_dir: &str,
+) -> Result<(), shuttle_service::Error> {
     info!("Downloading frontend bundle from S3");
-    let bucket = pool.get_secret("DEPLOY_BUCKET").await?;
-    let s3_result = s3::download_object(pool, bucket, "birdie-js.tar.gz").await?;
+    let bucket = secret_store
+        .get("DEPLOY_BUCKET")
+        .ok_or_else(|| CustomError::msg("Could not find deploy bucket secret"))?;
+    let s3_result = s3::download_object(&secret_store, bucket, "birdie-js.tar.gz").await?;
 
     info!("Unpacking frontend bundle");
     let gz = StreamReader::new(
@@ -337,10 +343,13 @@ pub async fn unpack_frontend(pool: &PgPool, build_dir: &str) -> Result<(), shutt
 }
 
 #[shuttle_service::main]
-async fn axum(#[shared::Postgres] pool: PgPool) -> ShuttleAxum {
+async fn axum(
+    #[shuttle_shared_db::Postgres] pool: PgPool,
+    #[shuttle_secrets::Secrets] secret_store: SecretStore,
+) -> ShuttleAxum {
     let frontend_dir = if std::env::var("BIRDIE_LOCAL").is_err() {
         let dir = "./frontend";
-        unpack_frontend(&pool, dir).await?;
+        unpack_frontend(secret_store, dir).await?;
         dir
     } else {
         "./js/build"
