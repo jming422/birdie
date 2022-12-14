@@ -302,7 +302,7 @@ pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_ser
 
     let router = Router::new()
         .nest("/api", api_routes)
-        .fallback(
+        .fallback_service(
             get_service(
                 ServeDir::new(js_build_dir)
                     .fallback(ServeFile::new(format!("{}/index.html", js_build_dir))),
