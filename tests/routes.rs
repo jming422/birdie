@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Jonathan Ming
+ * Copyright © 2023 Jonathan Ming
  *
  * This file is part of Birdie.
  *
@@ -18,6 +18,7 @@ use axum::{
     Router,
 };
 use chrono::DateTime;
+use http_body_util::BodyExt;
 use serde_json::{json, Map, Value};
 use sqlx::{postgres::PgPoolOptions, Executor, PgPool};
 use tower::ServiceExt; // for `app.oneshot()`
@@ -66,7 +67,10 @@ async fn get_app(pool: &PgPool) -> Router {
 }
 
 async fn body_bytes(response: Response) -> Bytes {
-    hyper::body::to_bytes(response.into_body()).await.unwrap()
+    BodyExt::collect(response.into_body())
+        .await
+        .unwrap()
+        .to_bytes()
 }
 
 fn get_string_key(map: &mut Map<String, Value>, key: &str) -> String {

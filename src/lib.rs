@@ -1,7 +1,7 @@
 /*
  * Birdie - Split group expenses using the minimal number of transactions
  *
- * Copyright © 2022 Jonathan Ming
+ * Copyright © 2023 Jonathan Ming
  *
  * This file is part of Birdie.
  *
@@ -23,22 +23,18 @@
 extern crate lazy_static;
 
 use std::collections::VecDeque;
-use std::io;
 
 use async_compression::tokio::bufread::GzipDecoder;
 use axum::{
     extract::Path,
     http::StatusCode,
-    routing::{get, get_service, post, put},
-    Extension, Json, Router,
+    routing::{get, get_service, post, put, Router},
+    Extension, Json,
 };
+use shuttle_runtime::CustomError;
 use shuttle_secrets::SecretStore;
-use shuttle_service::{error::CustomError, ShuttleAxum};
 use sqlx::{types::Decimal, Executor, PgPool};
-use sync_wrapper::SyncWrapper;
-use tokio_stream::StreamExt;
 use tokio_tar::Archive;
-use tokio_util::io::StreamReader;
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
@@ -283,7 +279,7 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_service::Error> {
+pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_runtime::Error> {
     info!("Building router");
     let outing_routes = Router::new()
         .route("/", get(list_outings).post(create_outing))
@@ -320,7 +316,7 @@ pub async fn app(pool: PgPool, js_build_dir: &str) -> Result<Router, shuttle_ser
 pub async fn unpack_frontend(
     secret_store: SecretStore,
     build_dir: &str,
-) -> Result<(), shuttle_service::Error> {
+) -> Result<(), shuttle_runtime::Error> {
     info!("Downloading frontend bundle from S3");
     let bucket = secret_store
         .get("DEPLOY_BUCKET")
@@ -328,33 +324,8 @@ pub async fn unpack_frontend(
     let s3_result = s3::download_object(&secret_store, bucket, "birdie-js.tar.gz").await?;
 
     info!("Unpacking frontend bundle");
-    let gz = StreamReader::new(
-        // StreamReader requires that the Item's Result Error type is an
-        // io::Error, not just any error (like an AWS SdkError), so we have
-        // to wrap any SdkErrors in io::Errors.
-        StreamExt::map(s3_result.body, |item| {
-            item.map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-        }),
-    );
-    let tar = GzipDecoder::new(gz);
+    let tar = GzipDecoder::new(s3_result.body.into_async_read());
     let mut archive = Archive::new(tar);
     archive.unpack(build_dir).await?;
     Ok(())
-}
-
-#[shuttle_service::main]
-async fn axum(
-    #[shuttle_shared_db::Postgres] pool: PgPool,
-    #[shuttle_secrets::Secrets] secret_store: SecretStore,
-) -> ShuttleAxum {
-    let frontend_dir = if std::env::var("BIRDIE_LOCAL").is_err() {
-        let dir = "./frontend";
-        unpack_frontend(secret_store, dir).await?;
-        dir
-    } else {
-        "./js/build"
-    };
-
-    migrate(&pool).await.map_err(CustomError::new)?;
-    Ok(SyncWrapper::new(app(pool, frontend_dir).await?))
 }
